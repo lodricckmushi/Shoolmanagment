@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🎓 UniCourse Management System
+# 🎓 UniCourse Management System [COURSE MANAGMENT]
 
 ![Student Cartoon](https://img.freepik.com/free-vector/hand-drawn-flat-design-stack-books-illustration_23-2149334862.jpg)
 
@@ -415,7 +415,7 @@ Special thanks to:
 
 ---
 
-Made with ❤️ by the UniCourse Team
+Made with ❤️ by  Opentech.info
 
 ![Education](https://img.freepik.com/free-vector/education-learning-background_23-2148090855.jpg)
 
