@@ -1,0 +1,41 @@
+<?php
+session_start();
+include 'connection.php';
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    $email = $_POST['email'];
+    $password = $_POST['password'];
+
+    // Check user exists
+    $sql = "SELECT id, name, password, role FROM users WHERE email = ?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("s", $email);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if ($result->num_rows === 1) {
+        $user = $result->fetch_assoc();
+
+        // For demo purposes, using plain password. Later use password_verify()
+        if ($password === $user['password']) {
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['role'] = $user['role'];
+
+            // Redirect based on role
+            if ($user['role'] === 'student') {
+                header("Location: studentdash.php");
+            } elseif ($user['role'] === 'instructor') {
+                header("Location: instructordash.php");
+            } else {
+                header("Location: admin_dashboard.php");
+            }
+            exit();
+        } else {
+            echo "❌ Invalid password!";
+        }
+    } else {
+        echo "❌ Invalid email!";
+    }
+}
+$conn->close();
+?>

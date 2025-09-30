@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Post Announcement</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="hold-transition sidebar-mini">
+<div class="wrapper">
+
+  <div class="content-wrapper p-4">
+    <h2>Post Announcement</h2>
+    <!-- ✅ Single form with correct action -->
+    <form action="post_announcement.php" method="POST">
+      <div class="form-group">
+        <label for="title">Announcement Title</label>
+        <!-- ✅ Added name="title" -->
+        <input type="text" class="form-control" id="title" name="title" placeholder="Enter title" required>
+      </div>
+      <div class="form-group">
+        <label for="content">Announcement Content</label>
+        <!-- ✅ Added name="content" -->
+        <textarea class="form-control" id="content" name="content" rows="5" placeholder="Enter content" required></textarea>
+      </div>
+      <button type="submit" class="btn btn-success">
+        <i class="fas fa-plus"></i> Post Announcement
+      </button>
+    </form>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
+</body>
+</html>
