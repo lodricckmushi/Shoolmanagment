@@ -1,0 +1,44 @@
+<?php
+// Main entry point for the application
+// Set the root path for the application
+define('ROOT_PATH', dirname(__DIR__));
+
+// Include configuration
+require_once ROOT_PATH . '/config/connection.php';
+
+// Start session
+session_start();
+
+// Simple routing logic
+$page = isset($_GET['page']) ? $_GET['page'] : 'login';
+
+// Basic security check
+$allowed_pages = [
+    'login', 'login2', 'logout',
+    'studentdash', 'instructordash',
+    'student_registration', 'instrucctorregistration',
+    'announcement_form', 'delete_announcement',
+    'drop_module', 'edit_announcement',
+    'post_announcement', 'post2_announcement',
+    'register_module', 'total_students',
+    'view_announcements'
+];
+
+if (in_array($page, $allowed_pages)) {
+    // Include the corresponding view
+    $view_file = ROOT_PATH . '/views/' . $page . '.php';
+    if (file_exists($view_file)) {
+        include $view_file;
+    } else {
+        // Check for HTML version
+        $html_file = ROOT_PATH . '/views/' . $page . '.html';
+        if (file_exists($html_file)) {
+            include $html_file;
+        } else {
+            echo "Page not found";
+        }
+    }
+} else {
+    echo "Invalid page requested";
+}
+?>

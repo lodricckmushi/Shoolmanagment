@@ -1,0 +1,17 @@
+# Enable URL rewriting
+RewriteEngine On
+
+# Set the base directory
+RewriteBase /
+
+# Redirect requests to the front controller
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php?page=$1 [QSA,L]
+
+# Handle specific file requests
+RewriteCond %{REQUEST_FILENAME} \.(php|html|css|js|jpg|jpeg|png|gif|ico)$
+RewriteRule ^(.*)$ $1 [L]
+
+# Default page
+RewriteRule ^$ index.php?page=login [L]
