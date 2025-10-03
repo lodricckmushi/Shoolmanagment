@@ -2,7 +2,11 @@
 // Show all errors for debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-session_start();
+
+// Start session only if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 // Redirect if already logged in
 if (isset($_SESSION['role'])) {
@@ -22,7 +26,7 @@ if (isset($_SESSION['role'])) {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Hostel Management - Login</title>
+  <title>Course Management - Login</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   
   <!-- AdminLTE & FontAwesome -->
@@ -39,7 +43,7 @@ if (isset($_SESSION['role'])) {
         <p class="login-box-msg">Sign in to your account</p>
 
         <!-- Login Form -->
-        <form action="login_controller.php" method="POST">
+        <form action="?page=login_controller" method="POST">
           <div class="input-group mb-3">
             <input type="email" name="email" class="form-control" placeholder="Email" required>
             <div class="input-group-append">

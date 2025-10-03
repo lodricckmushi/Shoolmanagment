@@ -14,14 +14,18 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'login';
 
 // Basic security check
 $allowed_pages = [
-    'login', 'login2', 'logout',
+    'login', 'login2', 'loginn', 'logout',
     'studentdash', 'instructordash',
     'student_registration', 'instrucctorregistration',
-    'announcement_form', 'delete_announcement',
-    'drop_module', 'edit_announcement',
+    'announcement_form', 'delete_announcement', 'drop_module', 'edit_announcement',
     'post_announcement', 'post2_announcement',
     'register_module', 'total_students',
     'view_announcements'
+];
+
+$allowed_controllers = [
+    'login_controller', 'login2_controller', 'student_controller',
+    'userinstructor_controller', 'userstudent_controller', 'controller'
 ];
 
 if (in_array($page, $allowed_pages)) {
@@ -37,6 +41,14 @@ if (in_array($page, $allowed_pages)) {
         } else {
             echo "Page not found";
         }
+    }
+} elseif (in_array($page, $allowed_controllers)) {
+    // Include the corresponding controller
+    $controller_file = ROOT_PATH . '/controllers/' . $page . '.php';
+    if (file_exists($controller_file)) {
+        include $controller_file;
+    } else {
+        echo "Controller not found";
     }
 } else {
     echo "Invalid page requested";

@@ -17,7 +17,7 @@
         <h3 class="card-title w-100">Student Registration</h3>
       </div>
       <div class="card-body">
-        <form action="userstudent_controller.php" method="POST">
+        <form action="?page=userstudent_controller" method="POST">
 
           <div class="form-group">
             <label for="name">Name</label>
@@ -41,7 +41,7 @@
 
         </form>
         <p class="text-center mb-0">
-          Already have an account? <a href="login.php">Login here</a>
+          Already have an account? <a href="?page=login">Login here</a>
         </p>
       </div>
     </div>

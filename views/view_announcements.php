@@ -1,5 +1,8 @@
 <?php
-session_start();
+// Start session only if not already started
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 include 'connection.php';
 
 $sql = "SELECT a.id, a.title, a.content, a.created_at, u.name AS posted_by 
