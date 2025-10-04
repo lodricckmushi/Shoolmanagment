@@ -22,7 +22,7 @@
       </li>
       <li class="nav-item d-none d-sm-inline-block">
         <a href="#" class="nav-link">Home</a>
-        <li class="nav-item"><a href="logout.php" class="nav-link text-danger">Logout</a></li>
+        <li class="nav-item"><a href="?page=logout" class="nav-link text-danger">Logout</a></li>
       </li>
     </ul>
   </nav>
@@ -45,28 +45,28 @@
           </li>
 
           <li class="nav-item">
-            <a href="post_announcement.html" class="nav-link">
+            <a href="?page=post_announcement" class="nav-link">
               <i class="nav-icon fas fa-plus"></i>
               <p>Post Announcement</p>
             </a>
           </li>
 
           <li class="nav-item">
-            <a href="edit_announcement.html" class="nav-link">
+            <a href="?page=edit_announcement" class="nav-link">
               <i class="nav-icon fas fa-edit"></i>
               <p>Edit Announcement</p>
             </a>
           </li>
 
           <li class="nav-item">
-            <a href="delete_announcement.html" class="nav-link">
+            <a href="?page=delete_announcement" class="nav-link">
               <i class="nav-icon fas fa-trash-alt"></i>
               <p>Delete Announcement</p>
             </a>
           </li>
 
           <li class="nav-item">
-            <a href="total_students.html" class="nav-link">
+            <a href="?page=total_students" class="nav-link">
               <i class="nav-icon fas fa-users"></i>
               <p>Total Students</p>
             </a>
@@ -98,7 +98,7 @@
               <div class="icon">
                 <i class="fas fa-plus"></i>
               </div>
-              <a href="post_announcement.html" class="small-box-footer">Go <i class="fas fa-arrow-circle-right"></i></a>
+              <a href="?page=post_announcement" class="small-box-footer">Go <i class="fas fa-arrow-circle-right"></i></a>
             </div>
           </div>
 
@@ -111,7 +111,7 @@
               <div class="icon">
                 <i class="fas fa-edit"></i>
               </div>
-              <a href="edit_announcement.html" class="small-box-footer">Go <i class="fas fa-arrow-circle-right"></i></a>
+              <a href="?page=edit_announcement" class="small-box-footer">Go <i class="fas fa-arrow-circle-right"></i></a>
             </div>
           </div>
 
@@ -124,7 +124,7 @@
               <div class="icon">
                 <i class="fas fa-trash-alt"></i>
               </div>
-              <a href="delete_announcement.html" class="small-box-footer">Go <i class="fas fa-arrow-circle-right"></i></a>
+              <a href="?page=delete_announcement" class="small-box-footer">Go <i class="fas fa-arrow-circle-right"></i></a>
             </div>
           </div>
 
@@ -137,7 +137,7 @@
               <div class="icon">
                 <i class="fas fa-users"></i>
               </div>
-              <a href="total_students.html" class="small-box-footer">Go <i class="fas fa-arrow-circle-right"></i></a>
+              <a href="?page=total_students" class="small-box-footer">Go <i class="fas fa-arrow-circle-right"></i></a>
             </div>
           </div>
 

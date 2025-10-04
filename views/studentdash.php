@@ -22,7 +22,7 @@
       </li>
       <li class="nav-item d-none d-sm-inline-block">
         <a href="#" class="nav-link">Home</a>
-         <li class="nav-item"><a href="logout.php" class="nav-link text-danger">Logout</a></li>
+         <li class="nav-item"><a href="?page=logout" class="nav-link text-danger">Logout</a></li>
       </li>
     </ul>
   </nav>
@@ -49,21 +49,21 @@
           </li>
 
           <li class="nav-item">
-            <a href="register_module.html" class="nav-link">
+            <a href="?page=register_module" class="nav-link">
               <i class="nav-icon fas fa-plus-circle"></i>
               <p>Register Module</p>
             </a>
           </li>
 
           <li class="nav-item">
-            <a href="drop_module.html" class="nav-link">
+            <a href="?page=drop_module" class="nav-link">
               <i class="nav-icon fas fa-minus-circle"></i>
               <p>Drop Module</p>
             </a>
           </li>
 
           <li class="nav-item">
-            <a href="view_announcements.html" class="nav-link">
+            <a href="?page=view_announcements" class="nav-link">
               <i class="nav-icon fas fa-bullhorn"></i>
               <p>View Announcements</p>
             </a>
@@ -104,7 +104,7 @@
               <div class="icon">
                 <i class="fas fa-plus-circle"></i>
               </div>
-              <a href="register_module.html" class="small-box-footer">Go <i class="fas fa-arrow-circle-right"></i></a>
+              <a href="?page=register_module" class="small-box-footer">Go <i class="fas fa-arrow-circle-right"></i></a>
             </div>
           </div>
 
@@ -117,7 +117,7 @@
               <div class="icon">
                 <i class="fas fa-minus-circle"></i>
               </div>
-              <a href="drop_module.html" class="small-box-footer">Go <i class="fas fa-arrow-circle-right"></i></a>
+              <a href="?page=drop_module" class="small-box-footer">Go <i class="fas fa-arrow-circle-right"></i></a>
             </div>
           </div>
 
@@ -130,7 +130,7 @@
               <div class="icon">
                 <i class="fas fa-bullhorn"></i>
               </div>
-              <a href="view_announcements.html" class="small-box-footer">Go <i class="fas fa-arrow-circle-right"></i></a>
+              <a href="?page=view_announcements" class="small-box-footer">Go <i class="fas fa-arrow-circle-right"></i></a>
             </div>
           </div>
         </div>

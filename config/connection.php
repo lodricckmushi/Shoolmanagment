@@ -10,9 +10,10 @@ $servername = "localhost";  // or your host name
 $username = "root";
 $password = "";
 $database = "unicourse";
+$port = 3307;  // MySQL is running on port 3307 (verified with netstat)
 
-// Create connection with improved error handling
-$conn = mysqli_connect($servername, $username, $password, $database);
+// Create connection with improved error handling and port specification
+$conn = mysqli_connect($servername, $username, $password, $database, $port);
 
 // Check connection with proper error handling
 if (!$conn) {
