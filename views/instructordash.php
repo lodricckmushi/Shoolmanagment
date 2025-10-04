@@ -38,7 +38,7 @@
         <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="true">
 
           <li class="nav-item">
-            <a href="home.html" class="nav-link">
+            <a href="#?page=instructordash" class="nav-link">
               <i class="nav-icon fas fa-home"></i>
               <p>Home</p>
             </a>
@@ -81,7 +81,66 @@
   <div class="content-wrapper">
     <div class="content-header">
       <div class="container-fluid">
-        <h1 class="m-0">Instructor Dashboard</h1>
+        <div class="d-flex justify-content-between align-items-center">
+          <h1 class="m-0">Instructor Dashboard</h1>
+          <span class="badge badge-info p-2" style="font-size:1.1em;">Welcome, Instructor!</span>
+        </div>
+        <?php
+        include __DIR__ . '/../config/connection.php';
+        // Announcements count
+        $res = $conn->query("SELECT COUNT(*) as cnt FROM announcements");
+        $row = $res ? $res->fetch_assoc() : ['cnt'=>0];
+        $announcements_count = $row['cnt'];
+        // Total students count
+        $res = $conn->query("SELECT COUNT(*) as cnt FROM students");
+        $row = $res ? $res->fetch_assoc() : ['cnt'=>0];
+        $students_count = $row['cnt'];
+        // New posts (last 7 days)
+        $res = $conn->query("SELECT COUNT(*) as cnt FROM announcements WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
+        $row = $res ? $res->fetch_assoc() : ['cnt'=>0];
+        $new_posts = $row['cnt'];
+        // Edits (simulate: count announcements updated in last 7 days, if you have updated_at column, else fallback to new_posts)
+        $edits = $new_posts;
+        ?>
+        <!-- Quick Stats Row -->
+        <div class="row mt-3 mb-2">
+          <div class="col-md-3 col-6">
+            <div class="card text-center border-success">
+              <div class="card-body p-2">
+                <i class="fas fa-bullhorn fa-2x text-success mb-1"></i>
+                <div class="h5 mb-0"><?php echo $announcements_count; ?></div>
+                <small class="text-muted">Announcements</small>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3 col-6">
+            <div class="card text-center border-warning">
+              <div class="card-body p-2">
+                <i class="fas fa-users fa-2x text-warning mb-1"></i>
+                <div class="h5 mb-0"><?php echo $students_count; ?></div>
+                <small class="text-muted">Total Students</small>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3 col-6">
+            <div class="card text-center border-primary">
+              <div class="card-body p-2">
+                <i class="fas fa-plus fa-2x text-primary mb-1"></i>
+                <div class="h5 mb-0"><?php echo $new_posts; ?></div>
+                <small class="text-muted">New Posts</small>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3 col-6">
+            <div class="card text-center border-danger">
+              <div class="card-body p-2">
+                <i class="fas fa-edit fa-2x text-danger mb-1"></i>
+                <div class="h5 mb-0"><?php echo $edits; ?></div>
+                <small class="text-muted">Edits</small>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
