@@ -10,7 +10,7 @@ $servername = "localhost";  // or your host name
 $username = "root";
 $password = "";
 $database = "unicourse";
-$port = 3307;  // MySQL is running on port 3307 (verified with netstat)
+$port = 3307;  // MySQL port, configured port 3307 instead of 3306 which is default 
 
 // Create connection with improved error handling and port specification
 $conn = mysqli_connect($servername, $username, $password, $database, $port);
@@ -27,16 +27,20 @@ if (!$conn) {
 mysqli_set_charset($conn, "utf8mb4");
 
 // Function to get database connection
-function getDBConnection() {
-    global $conn;
-    return $conn;
+if (!function_exists('getDBConnection')) {
+    function getDBConnection() {
+        global $conn;
+        return $conn;
+    }
 }
 
 // Function to close database connection
-function closeDBConnection() {
-    global $conn;
-    if ($conn) {
-        mysqli_close($conn);
+if (!function_exists('closeDBConnection')) {
+    function closeDBConnection() {
+        global $conn;
+        if ($conn) {
+            mysqli_close($conn);
+        }
     }
 }
 ?>

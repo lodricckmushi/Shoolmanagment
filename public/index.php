@@ -29,18 +29,15 @@ $allowed_controllers = [
 ];
 
 if (in_array($page, $allowed_pages)) {
-    // Include the corresponding view
-    $view_file = ROOT_PATH . '/views/' . $page . '.php';
-    if (file_exists($view_file)) {
-        include $view_file;
+    // Try .php first, then .html for views
+    $php_view = ROOT_PATH . '/views/' . $page . '.php';
+    $html_view = ROOT_PATH . '/views/' . $page . '.html';
+    if (file_exists($php_view)) {
+        include $php_view;
+    } elseif (file_exists($html_view)) {
+        include $html_view;
     } else {
-        // Check for HTML version
-        $html_file = ROOT_PATH . '/views/' . $page . '.html';
-        if (file_exists($html_file)) {
-            include $html_file;
-        } else {
-            echo "Page not found";
-        }
+        echo "Page not found: $page";
     }
 } elseif (in_array($page, $allowed_controllers)) {
     // Include the corresponding controller
@@ -48,9 +45,9 @@ if (in_array($page, $allowed_pages)) {
     if (file_exists($controller_file)) {
         include $controller_file;
     } else {
-        echo "Controller not found";
+        echo "Controller not found: $page";
     }
 } else {
-    echo "Invalid page requested";
+    echo "Invalid page requested: $page";
 }
 ?>
