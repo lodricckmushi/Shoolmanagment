@@ -5,7 +5,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $password = password_hash($_POST['password'], PASSWORD_DEFAULT);
 
     // DB connection
-    $conn = new mysqli('localhost', 'root', '', 'unicourse');
+    $conn = new mysqli('localhost', 'root', '', 'unicourse', 3307);
     if ($conn->connect_error) {
         die("Connection failed: " . $conn->connect_error);
     }

@@ -3,7 +3,7 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-include 'connection.php';
+include __DIR__ . '/../config/connection.php';
 
 $sql = "SELECT a.id, a.title, a.content, a.created_at, u.name AS posted_by 
         FROM announcements a 

@@ -10,18 +10,21 @@
 </head>
 <body class="hold-transition sidebar-mini">
 <div class="wrapper">
+  <!-- Home Button -->
+  <a href="?page=instructordash" class="btn btn-success position-fixed" style="top: 20px; left: 20px; z-index: 1050; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
+    <i class="fas fa-home fa-lg"></i>
+  </a>
 
   <div class="content-wrapper p-4">
     <h2>Post Announcement</h2>
-    <form action="post_announcement.php" method="POST"></form>
-    <form>
+    <form action="?page=post_announcement" method="POST">
       <div class="form-group">
         <label for="title">Announcement Title</label>
-        <input type="text" class="form-control" id="title" placeholder="Enter title" required>
+        <input type="text" class="form-control" id="title" name="title" placeholder="Enter title" required>
       </div>
       <div class="form-group">
         <label for="content">Announcement Content</label>
-        <textarea class="form-control" id="content" rows="5" placeholder="Enter content" required></textarea>
+        <textarea class="form-control" id="content" name="content" rows="5" placeholder="Enter content" required></textarea>
       </div>
       <button type="submit" class="btn btn-success"><i class="fas fa-plus"></i> Post Announcement</button>
     </form>

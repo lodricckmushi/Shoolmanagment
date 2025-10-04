@@ -11,13 +11,13 @@ if (session_status() === PHP_SESSION_NONE) {
 // Redirect if already logged in
 if (isset($_SESSION['role'])) {
     if ($_SESSION['role'] === 'instructor') {
-        header("Location: instructordash.php");
+  header("Location: ?page=instructordash");
         exit;
     } elseif ($_SESSION['role'] === 'student') {
-        header("Location: studentdash.php");
+  header("Location: ?page=studentdash");
         exit;
     } elseif ($_SESSION['role'] === 'manager') {
-        header("Location: hostel_manager47dash.php");
+  header("Location: ?page=hostel_manager47dash");
         exit;
     }
 }
