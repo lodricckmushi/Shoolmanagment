@@ -25,12 +25,14 @@ if ($res) {
 }
 
 
-// Handle drop
+// Handle drop (multiple modules)
 $success = false;
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['module_id'])) {
-    $module_id = intval($_POST['module_id']);
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['module_ids']) && is_array($_POST['module_ids'])) {
+  foreach ($_POST['module_ids'] as $module_id) {
+    $module_id = intval($module_id);
     $conn->query("DELETE FROM student_module_enrollments WHERE student_id=$student_id AND module_id=$module_id");
     $success = true;
+  }
 }
 ?>
 <!DOCTYPE html>
@@ -44,6 +46,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['module_id'])) {
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     .confetti-canvas { position: fixed; pointer-events: none; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; }
+    .module-checkbox:checked + span, .module-checkbox-label input:checked + span {
+      color: #28a745;
+      font-weight: bold;
+    }
+    .module-checkbox-label input[type="checkbox"]:checked {
+      accent-color: #28a745;
+      box-shadow: 0 0 0 2px #28a74533;
+    }
   </style>
 </head>
 <body class="hold-transition sidebar-mini">
@@ -59,18 +69,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['module_id'])) {
       <canvas class="confetti-canvas" id="confetti"></canvas>
     <?php endif; ?>
     <form method="post">
-      <div class="form-group">
-        <label for="registered-module">Select Registered Module</label>
-        <select class="form-control" id="registered-module" name="module_id" required>
-          <option value="">-- Choose Module --</option>
-          <?php foreach ($modules as $mod): ?>
-            <option value="<?php echo $mod['module_id']; ?>">
-              <?php echo htmlspecialchars($mod['module_name']) . " (" . htmlspecialchars($mod['module_code']) . ") - Enrolled: " . date('M d, Y', strtotime($mod['enrollment_date'])); ?>
-            </option>
-          <?php endforeach; ?>
-        </select>
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-danger text-white">
+          <h5 class="mb-0"><i class="fas fa-minus-circle"></i> Select Registered Modules to Drop</h5>
+        </div>
+        <div class="card-body">
+          <div class="form-group mb-0">
+            <div class="list-group">
+              <?php if (count($modules) > 0): ?>
+                <?php foreach ($modules as $mod): ?>
+                  <label class="list-group-item d-flex align-items-center module-checkbox-label" style="cursor:pointer;">
+                    <input type="checkbox" name="module_ids[]" value="<?php echo $mod['module_id']; ?>" class="mr-2 module-checkbox">
+                    <span class="ml-2"><?php echo htmlspecialchars($mod['module_name']) . " (" . htmlspecialchars($mod['module_code']) . ") - Enrolled: " . date('M d, Y', strtotime($mod['enrollment_date'])); ?></span>
+                  </label>
+                <?php endforeach; ?>
+              <?php else: ?>
+                <div class="alert alert-secondary mb-0">No registered modules to drop.</div>
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
       </div>
-      <button type="submit" class="btn btn-danger"><i class="fas fa-minus-circle"></i> Drop Module</button>
+      <button type="submit" class="btn btn-danger btn-block py-2"><i class="fas fa-minus-circle"></i> Drop Selected Modules</button>
     </form>
   </div>
 </div>

@@ -39,17 +39,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header("Location: ?page=instructordash");
             } elseif ($user['role'] === 'manager') {
                 header("Location: ?page=hostel_manager47dash");
+            } elseif ($user['role'] === 'superadmin') {
+                header("Location: ?page=superadmindash");
             } else {
-                echo "Unknown role in DB: " . htmlspecialchars($user['role']);
+                header("Location: ?page=login&error=role");
             }
             exit;
         } else {
-            echo "<p style='color:red;'>Invalid password!</p>";
+            header("Location: ?page=login&error=invalid");
+            exit;
         }
     } else {
-        echo "<p style='color:red;'>No user found with this email!</p>";
+        header("Location: ?page=login&error=nouser");
+        exit;
     }
 } else {
-    echo "<p style='color:red;'>Invalid request method.</p>";
+    header("Location: ?page=login&error=method");
+    exit;
 }
 ?>
