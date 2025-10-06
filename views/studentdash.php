@@ -3,54 +3,70 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 include __DIR__ . '/../config/connection.php';
-// Handle registration from dashboard (before any output)
-$student_id = $_SESSION['student_id'] ?? null;
-$registration_success = false;
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['register_module_id']) && $student_id) {
-    $module_id = intval($_POST['register_module_id']);
-    $check = $conn->query("SELECT * FROM student_module_enrollments WHERE student_id=$student_id AND module_id=$module_id");
-    if ($check && $check->num_rows === 0) {
-        $conn->query("INSERT INTO student_module_enrollments (student_id, module_id) VALUES ($student_id, $module_id)");
-        header("Location: ?page=studentdash&registered=1");
-        exit;
-    }
+
+// Ensure student is logged in
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'student' || !isset($_SESSION['email'])) {
+    header('Location: ?page=login');
+    exit;
 }
-// Get student info
+
+// Get student info based on session email
+$student_id = null;
 $student_name = '';
 $course_id = null;
-if ($student_id) {
-  $res = $conn->query("SELECT name, course_id FROM students WHERE student_id = $student_id");
-  if ($res && $row = $res->fetch_assoc()) {
+$email = $_SESSION['email'];
+
+$stmt = $conn->prepare("SELECT s.student_id, u.name, sce.course_id 
+                        FROM users u
+                        LEFT JOIN students s ON u.email = s.email
+                        LEFT JOIN student_course_enrollments sce ON s.student_id = sce.student_id
+                        WHERE u.email = ? LIMIT 1");
+$stmt->bind_param("s", $email);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result && $row = $result->fetch_assoc()) {
+    $student_id = $row['student_id'];
     $student_name = $row['name'];
     $course_id = $row['course_id'];
-  }
 }
-// Fetch all modules for this student's course
-$all_modules = [];
-if ($course_id) {
-  $res = $conn->query("SELECT module_id, module_name, module_code FROM modules WHERE course_id = $course_id");
-  if ($res) {
-    while ($row = $res->fetch_assoc()) {
-      $all_modules[] = $row;
+$stmt->close();
+
+// Handle module registration/dropping from dashboard (before any output)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && $student_id) {
+    if (isset($_POST['register_module_id'])) {
+        $module_id = intval($_POST['register_module_id']);
+        $stmt = $conn->prepare("INSERT INTO student_module_enrollments (student_id, module_id) VALUES (?, ?)");
+        $stmt->bind_param("ii", $student_id, $module_id);
+        if ($stmt->execute()) {
+            header("Location: ?page=studentdash&action=registered");
+            exit;
+        }
+    } elseif (isset($_POST['drop_module_id'])) {
+        $module_id = intval($_POST['drop_module_id']);
+        $stmt = $conn->prepare("DELETE FROM student_module_enrollments WHERE student_id = ? AND module_id = ?");
+        $stmt->bind_param("ii", $student_id, $module_id);
+        if ($stmt->execute()) {
+            header("Location: ?page=studentdash&action=dropped");
+            exit;
+        }
     }
-  }
 }
-// Fetch registered modules for this student
+
+// Fetch all modules for the course, and identify which are registered
 $registered_modules = [];
-if ($student_id) {
-  $res = $conn->query("SELECT m.module_id, m.module_name, m.module_code FROM modules m INNER JOIN student_module_enrollments sm ON m.module_id = sm.module_id WHERE sm.student_id = $student_id");
-  if ($res) {
-    while ($row = $res->fetch_assoc()) {
-      $registered_modules[$row['module_id']] = $row;
-    }
-  }
-}
-// Calculate available modules (not yet registered)
 $available_modules = [];
-foreach ($all_modules as $mod) {
-  if (!isset($registered_modules[$mod['module_id']])) {
-    $available_modules[] = $mod;
-  }
+if ($course_id && $student_id) {
+    $sql = "SELECT m.module_id, m.module_name, m.module_code, (sm.student_id IS NOT NULL) as is_registered
+            FROM modules m
+            LEFT JOIN student_module_enrollments sm ON m.module_id = sm.module_id AND sm.student_id = ?
+            WHERE m.course_id = ? ORDER BY m.module_name";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ii", $student_id, $course_id);
+    $stmt->execute();
+    $all_modules_result = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+    foreach ($all_modules_result as $mod) {
+        $mod['is_registered'] ? ($registered_modules[] = $mod) : ($available_modules[] = $mod);
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -112,6 +128,24 @@ foreach ($all_modules as $mod) {
       .small-box .inner h4 { font-size: 1.1rem; }
       .small-box .inner p { font-size: 0.98rem; }
     }
+    .action-btn-sm {
+        padding: .2rem .5rem;
+        font-size: .8rem;
+    }
+    .online-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        background-color: #28a745;
+        border-radius: 50%;
+        margin-right: 8px;
+        animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+    }
   </style>
 </head>
 <body class="hold-transition sidebar-mini">
@@ -130,7 +164,7 @@ foreach ($all_modules as $mod) {
     </ul>
     <div class="student-welcome">
       <?php if ($student_name): ?>
-        Welcome, <span style="color:#007bff;"><i class="fas fa-user-graduate"></i> <?= htmlspecialchars($student_name) ?></span>
+        <span class="online-indicator"></span>Welcome, <span style="color:#007bff;"><?= htmlspecialchars($student_name) ?></span>
       <?php else: ?>
         Welcome, Student
       <?php endif; ?>
@@ -207,21 +241,27 @@ foreach ($all_modules as $mod) {
         <div class="row mb-4">
           <div class="col-md-6 mb-3">
             <div class="card h-100">
-              <div class="card-header bg-dark text-white">
-                <h5 class="mb-0"><i class="fas fa-layer-group"></i> All Modules in Your Course</h5>
+              <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="fas fa-layer-group"></i> Available Modules to Register</h5>
               </div>
               <div class="card-body">
-                <?php if (count($all_modules) > 0): ?>
+                <?php if (count($available_modules) > 0): ?>
                   <ul class="list-group">
-                    <?php foreach ($all_modules as $mod): ?>
+                    <?php foreach ($available_modules as $mod): ?>
                       <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <?= htmlspecialchars($mod['module_name']) ?>
-                        <span class="badge badge-dark badge-pill"> <?= htmlspecialchars($mod['module_code']) ?> </span>
+                        <div>
+                          <?= htmlspecialchars($mod['module_name']) ?>
+                          <span class="badge badge-secondary badge-pill ml-2"><?= htmlspecialchars($mod['module_code']) ?></span>
+                        </div>
+                        <form method="POST" class="d-inline">
+                            <input type="hidden" name="register_module_id" value="<?= $mod['module_id'] ?>">
+                            <button type="submit" class="btn btn-success action-btn-sm"><i class="fas fa-plus-circle"></i> Register</button>
+                        </form>
                       </li>
                     <?php endforeach; ?>
                   </ul>
                 <?php else: ?>
-                  <div class="alert alert-secondary mb-0">No modules found for your course.</div>
+                  <div class="alert alert-info mb-0">No new modules available for registration, or you may need to enroll in a course first.</div>
                 <?php endif; ?>
               </div>
             </div>
@@ -236,8 +276,14 @@ foreach ($all_modules as $mod) {
                   <ul class="list-group">
                     <?php foreach ($registered_modules as $mod): ?>
                       <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <?= htmlspecialchars($mod['module_name']) ?>
-                        <span class="badge badge-info badge-pill"> <?= htmlspecialchars($mod['module_code']) ?> </span>
+                        <div>
+                          <?= htmlspecialchars($mod['module_name']) ?>
+                          <span class="badge badge-info badge-pill ml-2"><?= htmlspecialchars($mod['module_code']) ?></span>
+                        </div>
+                        <form method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to drop this module?');">
+                            <input type="hidden" name="drop_module_id" value="<?= $mod['module_id'] ?>">
+                            <button type="submit" class="btn btn-danger action-btn-sm"><i class="fas fa-minus-circle"></i> Drop</button>
+                        </form>
                       </li>
                     <?php endforeach; ?>
                   </ul>
@@ -287,21 +333,6 @@ foreach ($all_modules as $mod) {
               <a href="?page=view_announcements" class="small-box-footer font-weight-bold text-success" style="font-size:1.1em;">Go <i class="fas fa-arrow-circle-right"></i></a>
             </div>
           </div>
-        <!-- Debug Section: Show raw registered modules data -->
-        <div class="row mt-4">
-          <div class="col-12">
-            <div class="card border-danger">
-              <div class="card-header bg-danger text-white">
-                <strong>Debug: Raw Registered Modules Data</strong>
-              </div>
-              <div class="card-body">
-                <pre style="font-size:0.95em; color:#b71c1c; background:#fff3e0; border-radius:0.5em; padding:1em;">
-<?php print_r($registered_modules); ?>
-                </pre>
-              </div>
-            </div>
-          </div>
-        </div>
         </div>
       </div>
     </div>

@@ -68,7 +68,7 @@ if (isset($_SESSION['role'])) {
       flex: 1 1 0;
       min-width: 220px;
       max-width: 480px;
-      background: url('https://via.placeholder.com/480') center/cover no-repeat, linear-gradient(120deg, #3a4a5aee 60%, #6b7a8fdd 100%);
+      background: url('../assets/images/course.jpg') center/cover no-repeat, linear-gradient(120deg, #3a4a5aee 60%, #6b7a8fdd 100%);
       color: #f8fafc;
       display: flex;
       flex-direction: column;
@@ -221,6 +221,20 @@ if (isset($_SESSION['role'])) {
       color: #2a3a4a;
       margin-top: 1rem;
     }
+
+    /* Shake animation for error feedback */
+    .shake {
+      animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+      transform: translate3d(0, 0, 0);
+      backface-visibility: hidden;
+      perspective: 1000px;
+    }
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-1px, 0, 0); }
+      20%, 80% { transform: translate3d(2px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+      40%, 60% { transform: translate3d(4px, 0, 0); }
+    }
   </style>
 </head>
 <body>
@@ -288,9 +302,25 @@ if (isset($_SESSION['role'])) {
     // Show login error modal (Example)
     $(document).ready(function () {
       const error = new URLSearchParams(window.location.search).get('error');
+      let errorMessage = '';
+
       if (error) {
-        $('#loginErrorMsg').text('Invalid username or password!');
-        $('#loginErrorPopup').modal('show');
+        if (error === 'invalid' || error === 'nouser') {
+            errorMessage = 'Invalid email or password!';
+        } else if (error === 'role') {
+            errorMessage = 'User role is not configured.';
+        } else {
+            errorMessage = 'An unknown error occurred.';
+        }
+
+        $('#loginErrorMsg').text(errorMessage);
+        $('.login-form-box').addClass('shake');
+        $('#loginErrorPopup').modal({ backdrop: false, show: true });
+
+        setTimeout(function() {
+            $('#loginErrorPopup').modal('hide');
+            $('.login-form-box').removeClass('shake');
+        }, 1200);
       }
     });
   </script>

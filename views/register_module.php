@@ -5,31 +5,55 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 include __DIR__ . '/../config/connection.php';
 
-// Assume student_id is stored in session
-$student_id = $_SESSION['student_id'] ?? 1; // fallback for demo
+// Ensure student is logged in and get their ID
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'student' || !isset($_SESSION['email'])) {
+    header('Location: ?page=login');
+    exit;
+}
+
+$student_id = null;
+$email = $_SESSION['email'];
+$stmt = $conn->prepare("SELECT student_id FROM students WHERE email = ?");
+$stmt->bind_param("s", $email);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result && $row = $result->fetch_assoc()) {
+    $student_id = $row['student_id'];
+}
+$stmt->close();
+
+if (!$student_id) {
+    // Display a relevant error message using the new error page
+    $error_title = "Account Error";
+    $error_message = "We couldn't find a student profile linked to your account.<br>Please contact support or try logging in again.";
+    include(ROOT_PATH . '/views/error_display.php');
+    exit;
+}
 
 // Fetch only modules not already enrolled by the student
 $modules = [];
-$res = $conn->query("SELECT m.module_id, m.module_name, m.module_code FROM modules m WHERE m.module_id NOT IN (SELECT module_id FROM student_module_enrollments WHERE student_id = $student_id)");
-
-if ($res) {
-  while ($row = $res->fetch_assoc()) {
-    $modules[] = $row;
-  }
+$stmt = $conn->prepare("SELECT m.module_id, m.module_name, m.module_code FROM modules m WHERE m.module_id NOT IN (SELECT module_id FROM student_module_enrollments WHERE student_id = ?)");
+$stmt->bind_param("i", $student_id);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result) {
+    $modules = $result->fetch_all(MYSQLI_ASSOC);
 }
-
+$stmt->close();
 
 // Handle registration (multiple modules)
 $success = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['module_ids']) && is_array($_POST['module_ids'])) {
-  foreach ($_POST['module_ids'] as $module_id) {
-    $module_id = intval($module_id);
-    $check = $conn->query("SELECT * FROM student_module_enrollments WHERE student_id=$student_id AND module_id=$module_id");
-    if ($check && $check->num_rows === 0) {
-      $conn->query("INSERT INTO student_module_enrollments (student_id, module_id) VALUES ($student_id, $module_id)");
-      $success = true;
+    $insert_stmt = $conn->prepare("INSERT INTO student_module_enrollments (student_id, module_id) VALUES (?, ?)");
+    foreach ($_POST['module_ids'] as $module_id) {
+        $module_id = intval($module_id);
+        $insert_stmt->bind_param("ii", $student_id, $module_id);
+        // The execute might fail if a unique constraint is violated (already registered), which is fine.
+        if ($insert_stmt->execute()) {
+            $success = true;
+        }
     }
-  }
+    $insert_stmt->close();
 }
 ?>
 <!DOCTYPE html>

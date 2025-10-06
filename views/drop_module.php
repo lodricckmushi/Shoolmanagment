@@ -5,34 +5,53 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 include __DIR__ . '/../config/connection.php';
 
-$student_id = $_SESSION['student_id'] ?? 1; // fallback for demo
+// Ensure student is logged in and get their ID
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'student' || !isset($_SESSION['email'])) {
+    header('Location: ?page=login');
+    exit;
+}
+
+$student_id = null;
+$email = $_SESSION['email'];
+$stmt = $conn->prepare("SELECT student_id FROM students WHERE email = ?");
+$stmt->bind_param("s", $email);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result && $row = $result->fetch_assoc()) {
+    $student_id = $row['student_id'];
+}
+$stmt->close();
+
+if (!$student_id) {
+    // Display a relevant error message using the new error page
+    $error_title = "Account Error";
+    $error_message = "We couldn't find a student profile linked to your account.<br>Please contact support or try logging in again.";
+    include(ROOT_PATH . '/views/error_display.php');
+    exit;
+}
 
 // Fetch registered modules for this student
-$modules = [];
-// Use correct table name student_module_enrollments
-// Fetch registered modules with enrollment date
-$modules = [];
-$res = $conn->query("SELECT m.module_id, m.module_name, m.module_code, sm.enrollment_date 
+$sql = "SELECT m.module_id, m.module_name, m.module_code, sm.enrollment_date 
                      FROM modules m 
                      INNER JOIN student_module_enrollments sm 
                      ON m.module_id = sm.module_id 
-                     WHERE sm.student_id = $student_id");
-
-if ($res) {
-  while ($row = $res->fetch_assoc()) {
-    $modules[] = $row;
-  }
-}
-
+                     WHERE sm.student_id = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $student_id);
+$stmt->execute();
+$modules = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
 
 // Handle drop (multiple modules)
 $success = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['module_ids']) && is_array($_POST['module_ids'])) {
-  foreach ($_POST['module_ids'] as $module_id) {
-    $module_id = intval($module_id);
-    $conn->query("DELETE FROM student_module_enrollments WHERE student_id=$student_id AND module_id=$module_id");
-    $success = true;
-  }
+    $delete_stmt = $conn->prepare("DELETE FROM student_module_enrollments WHERE student_id = ? AND module_id = ?");
+    foreach ($_POST['module_ids'] as $module_id) {
+        $module_id = intval($module_id);
+        $delete_stmt->bind_param("ii", $student_id, $module_id);
+        if ($delete_stmt->execute()) $success = true;
+    }
+    $delete_stmt->close();
 }
 ?>
 <!DOCTYPE html>

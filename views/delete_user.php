@@ -1,4 +1,4 @@
-<?php
+ <?php
 // delete_user.php - Superadmin deletes a user
 session_start();
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'superadmin') {

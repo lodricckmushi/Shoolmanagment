@@ -25,8 +25,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($result->num_rows === 1) {
         $user = $result->fetch_assoc();
 
-    // If passwords are stored as plain text, use direct comparison
-    if ($password === $user['password']) {
+        // Verify password. This handles both hashed and plain text passwords for backward compatibility.
+        // The best practice is to use password_hash() for all password storage.
+        $password_matches = password_verify($password, $user['password']);
+        // Fallback for old plain-text passwords
+        if (!$password_matches && $password === $user['password']) {
+            $password_matches = true;
+        }
+
+        if ($password_matches) {
             // store session data
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['email'] = $user['email'];
@@ -39,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 header("Location: ?page=instructordash");
             } elseif ($user['role'] === 'manager') {
                 header("Location: ?page=hostel_manager47dash");
-            } elseif ($user['role'] === 'superadmin') {
+            } elseif ($user['role'] === 'superadmin' || $user['role'] === 'admin') {
                 header("Location: ?page=superadmindash");
             } else {
                 header("Location: ?page=login&error=role");
