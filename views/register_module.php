@@ -19,16 +19,17 @@ if ($res) {
 }
 
 
-// Handle registration
+// Handle registration (multiple modules)
 $success = false;
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['module_id'])) {
-    $module_id = intval($_POST['module_id']);
-    // Check if already registered
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['module_ids']) && is_array($_POST['module_ids'])) {
+  foreach ($_POST['module_ids'] as $module_id) {
+    $module_id = intval($module_id);
     $check = $conn->query("SELECT * FROM student_module_enrollments WHERE student_id=$student_id AND module_id=$module_id");
     if ($check && $check->num_rows === 0) {
       $conn->query("INSERT INTO student_module_enrollments (student_id, module_id) VALUES ($student_id, $module_id)");
       $success = true;
     }
+  }
 }
 ?>
 <!DOCTYPE html>
@@ -42,6 +43,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['module_id'])) {
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     .confetti-canvas { position: fixed; pointer-events: none; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; }
+    .module-checkbox:checked + span, .module-checkbox-label input:checked + span {
+      color: #28a745;
+      font-weight: bold;
+    }
+    .module-checkbox-label input[type="checkbox"]:checked {
+      accent-color: #28a745;
+      box-shadow: 0 0 0 2px #28a74533;
+    }
   </style>
 </head>
 <body class="hold-transition sidebar-mini">
@@ -57,16 +66,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['module_id'])) {
       <canvas class="confetti-canvas" id="confetti"></canvas>
     <?php endif; ?>
     <form method="post">
-      <div class="form-group">
-        <label for="module">Select Module</label>
-        <select class="form-control" id="module" name="module_id" required>
-          <option value="">-- Choose Module --</option>
-          <?php foreach ($modules as $mod): ?>
-            <option value="<?php echo $mod['module_id']; ?>"><?php echo htmlspecialchars($mod['module_name']) . " (" . htmlspecialchars($mod['module_code']) . ")"; ?></option>
-          <?php endforeach; ?>
-        </select>
+      <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+          <h5 class="mb-0"><i class="fas fa-plus-circle"></i> Select Modules to Register</h5>
+        </div>
+        <div class="card-body">
+          <div class="form-group mb-0">
+            <div class="list-group">
+              <?php if (count($modules) > 0): ?>
+                <?php foreach ($modules as $mod): ?>
+                  <label class="list-group-item d-flex align-items-center module-checkbox-label" style="cursor:pointer;">
+                    <input type="checkbox" name="module_ids[]" value="<?php echo $mod['module_id']; ?>" class="mr-2 module-checkbox">
+                    <span class="ml-2"><?php echo htmlspecialchars($mod['module_name']) . " (" . htmlspecialchars($mod['module_code']) . ")"; ?></span>
+                  </label>
+                <?php endforeach; ?>
+              <?php else: ?>
+                <div class="alert alert-secondary mb-0">No modules available for registration.</div>
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
       </div>
-      <button type="submit" class="btn btn-primary"><i class="fas fa-plus-circle"></i> Register Module</button>
+      <button type="submit" class="btn btn-success btn-block py-2"><i class="fas fa-plus-circle"></i> Register Selected Modules</button>
     </form>
   </div>
 </div>

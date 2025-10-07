@@ -24,7 +24,10 @@ $result = $conn->query($sql);
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    body { background: #f4f6f9; }
+    body {
+      background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%) fixed;
+      min-height: 100vh;
+    }
     .announcements-header {
       background: linear-gradient(90deg, #8B5C2A 0%, #b8894a 100%);
       color: #fff;
@@ -73,10 +76,28 @@ $result = $conn->query($sql);
       box-shadow: 0 2px 8px rgba(0,0,0,0.15);
       position: fixed;
       border: none;
+      font-size: 1.3rem;
+      transition: background 0.2s;
+    }
+    .home-btn-advanced:hover {
+      background: #6d4317 !important;
     }
     @media (max-width: 600px) {
-      .announcements-header { padding-left: 1.5rem; font-size: 1.2rem; }
+      .home-btn-advanced {
+        width: 38px;
+        height: 38px;
+        font-size: 1.05rem;
+        top: 10px;
+        left: 10px;
+      }
+    }
+    @media (max-width: 600px) {
+      .announcements-header { padding-left: 0.7rem; font-size: 1.1rem; padding-top: 1.2rem; padding-bottom: 0.7rem; }
       .home-btn-advanced { width: 40px; height: 40px; font-size: 1.1rem; }
+      .announcement-title { font-size: 1.05rem; }
+      .announcement-meta { font-size: 0.85rem; }
+      .announcement-content { font-size: 0.98rem; padding-left: 0.5rem !important; }
+      .announcement-card { margin-bottom: 1.1rem; }
     }
   </style>
 </head>
@@ -91,17 +112,20 @@ $result = $conn->query($sql);
   </div>
   <?php
   if ($result->num_rows > 0) {
-      while ($row = $result->fetch_assoc()) {
-          echo "<div class='card announcement-card'>";
-          echo "<div class='card-body'>";
-          echo "<div class='announcement-title'>" . htmlspecialchars($row['title']) . "</div>";
-          echo "<div class='announcement-meta mb-2'>By " . htmlspecialchars($row['posted_by']) . " on " . date('M d, Y H:i', strtotime($row['created_at'])) . "</div>";
-          echo "<div class='announcement-content'>" . nl2br(htmlspecialchars($row['content'])) . "</div>";
-          echo "</div>";
-          echo "</div>";
-      }
+    while ($row = $result->fetch_assoc()) {
+      echo "<div class='card announcement-card mb-4 shadow-sm border-left-warning'>";
+      echo "  <div class='card-body'>";
+      echo "    <div class='d-flex align-items-center mb-2'>";
+      echo "      <span class='badge badge-warning mr-3' style='font-size:1.2em;'><i class='fas fa-bullhorn'></i></span>";
+      echo "      <span class='announcement-title flex-grow-1'>" . htmlspecialchars($row['title']) . "</span>";
+      echo "    </div>";
+      echo "    <div class='announcement-meta mb-2'><i class='fas fa-user-tie mr-1'></i>By <span class='font-weight-bold text-primary'>" . htmlspecialchars($row['posted_by']) . "</span> <span class='mx-2 text-muted'>|</span> <i class='far fa-clock mr-1'></i>" . date('M d, Y H:i', strtotime($row['created_at'])) . "</div>";
+      echo "    <div class='announcement-content pl-4' style='border-left:3px solid #ffe082;'>" . nl2br(htmlspecialchars($row['content'])) . "</div>";
+      echo "  </div>";
+      echo "</div>";
+    }
   } else {
-      echo "<div class='alert alert-warning'>No announcements found.</div>";
+    echo "<div class='alert alert-warning'>No announcements found.</div>";
   }
   ?>
 </div>
