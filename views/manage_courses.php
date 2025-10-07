@@ -51,10 +51,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // Fetch all courses and departments
 $courses_sql = "
-    SELECT c.*, d.department_name, COUNT(m.module_id) as module_count
+    SELECT c.*, d.department_name, u.name as instructor_name, COUNT(DISTINCT m.module_id) as module_count
     FROM courses c 
     LEFT JOIN departments d ON c.department_id = d.department_id 
     LEFT JOIN modules m ON c.course_id = m.course_id
+    LEFT JOIN course_instructor_assignments cia ON c.course_id = cia.course_id
+    LEFT JOIN users u ON cia.instructor_id = u.id
     GROUP BY c.course_id ORDER BY c.course_name";
 $courses = $conn->query($courses_sql)->fetch_all(MYSQLI_ASSOC);
 $departments = $conn->query("SELECT * FROM departments ORDER BY department_name")->fetch_all(MYSQLI_ASSOC);
@@ -125,6 +127,7 @@ $departments = $conn->query("SELECT * FROM departments ORDER BY department_name"
                     <tr>
                         <th>Course Name</th>
                         <th>Code</th>
+                        <th>Instructor</th>
                         <th>Department</th>
                         <th>Modules</th>
                         <th class="text-right">Actions</th>
@@ -138,6 +141,7 @@ $departments = $conn->query("SELECT * FROM departments ORDER BY department_name"
                             <tr>
                                 <td><?= htmlspecialchars($course['course_name']) ?></td>
                                 <td><?= htmlspecialchars($course['course_code']) ?></td>
+                                <td><?= htmlspecialchars($course['instructor_name'] ?? 'Unassigned') ?></td>
                                 <td><?= htmlspecialchars($course['department_name'] ?? 'N/A') ?></td>
                                 <td><span class="badge badge-info"><?= $course['module_count'] ?></span></td>
                                 <td class="text-right">

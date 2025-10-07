@@ -64,9 +64,10 @@ if ($result) {
                                 <td><?= date('M d, Y', strtotime($instructor['created_at'])) ?></td>
                                 <td class="text-right">
                                     <a href="?page=edit_user&id=<?= $instructor['id'] ?>" class="btn btn-sm btn-primary"><i class="fas fa-edit"></i> Edit</a>
-                                    <a href="?page=delete_user&id=<?= $instructor['id'] ?>" class="btn btn-sm btn-danger" onclick="return confirm('Are you sure you want to delete this instructor?');">
-                                        <i class="fas fa-trash"></i> Delete
-                                    </a>
+                                    <form action="?page=delete_user" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to permanently delete this instructor?');">
+                                        <input type="hidden" name="delete_user_id" value="<?= $instructor['id'] ?>">
+                                        <button type="submit" class="btn btn-sm btn-danger"><i class="fas fa-trash"></i> Delete</button>
+                                    </form>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

@@ -17,15 +17,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $user = $result->fetch_assoc();
 
         if ($user['status'] === 'suspended') {
-            echo "❌ Your account has been suspended. Please contact an administrator.";
-            exit();
+            header("Location: ?page=loginn&error=suspended");
+            exit;
         }
 
-        // For demo purposes, using plain password. Later use password_verify()
-        if ($password === $user['password']) {
+        // Verify the password against the stored hash
+        if (password_verify($password, $user['password'])) {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['role'] = $user['role'];
-
+            $_SESSION['email'] = $user['email']; // Store email in session for consistency
+            
             // Redirect based on role
             if ($user['role'] === 'student') {
                 header("Location: ?page=studentdash");
@@ -37,10 +38,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
             exit();
         } else {
-            echo "❌ Invalid password!";
+            header("Location: ?page=loginn&error=invalid");
+            exit;
         }
     } else {
-        echo "❌ Invalid email!";
+        header("Location: ?page=loginn&error=invalid");
+        exit;
     }
 }
 $conn->close();

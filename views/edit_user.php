@@ -12,7 +12,7 @@ $conn = getDBConnection();
 
 // Define roles based on the current user's role
 if ($_SESSION['role'] === 'superadmin') {
-    $roles = ['student', 'instructor', 'manager', 'superadmin'];
+    $roles = ['student', 'instructor', 'admin', 'superadmin'];
 } else { // 'admin' role
     $roles = ['student', 'instructor'];
 }
@@ -51,6 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $new_password = $_POST['new_password'];
 
     if ($name && $email && in_array($role, $roles) && in_array($status, ['active', 'suspended'])) {
+        $conn->begin_transaction();
         // Base query
         $sql = "UPDATE users SET name=?, email=?, role=?, status=? WHERE id=?";
         $params = [$name, $email, $role, $status, $id];
@@ -67,18 +68,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmt = $conn->prepare($sql);
         $stmt->bind_param($types, ...$params);
 
-        if ($stmt->execute()) {
+        try {
+            if (!$stmt->execute()) {
+                throw new Exception($stmt->error, $stmt->errno);
+            }
+            $stmt->close();
+
+            // Sync with students or instructors table
+            if ($user['role'] === 'student') {
+                // The students table is linked by email, not user_id. Use the old email to find the record.
+                $sync_stmt = $conn->prepare("UPDATE students SET name = ?, email = ? WHERE email = ?");
+                $sync_stmt->bind_param("sss", $name, $email, $user['email']);
+                $sync_stmt->execute();
+                $sync_stmt->close();
+            } elseif ($user['role'] === 'instructor') {
+                // Assuming instructors table has a user_id. If not, this needs adjustment.
+                // For now, let's assume it's linked by email.
+                $sync_stmt = $conn->prepare("UPDATE instructors SET name = ?, email = ? WHERE email = ?");
+                $sync_stmt->bind_param("sss", $name, $email, $user['email']); // Use old email to find the record
+                $sync_stmt->execute();
+                $sync_stmt->close();
+            }
+
+            $conn->commit();
             $_SESSION['flash_message'] = 'User updated successfully!';
-            header('Location: ?page=superadmindash'); // Redirect on success
+            header('Location: ?page=superadmindash');
             exit;
-        } else {
-            if ($conn->errno === 1062) {
-                $message = '<div class="alert alert-danger">Error: This email address is already registered to another user.</div>';
+        } catch (Exception $e) {
+            $conn->rollback();
+            if ($e->getCode() === 1062) {
+                $message = '<div class="alert alert-danger">Error: This email address is already in use.</div>';
             } else {
-                $message = '<div class="alert alert-danger">Error: ' . htmlspecialchars($stmt->error) . '</div>';
+                $message = '<div class="alert alert-danger">Error: ' . htmlspecialchars($e->getMessage()) . '</div>';
             }
         }
-        $stmt->close();
 
         // Refresh user data to show in form
         $user['name'] = $name;

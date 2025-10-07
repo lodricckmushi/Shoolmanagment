@@ -19,10 +19,10 @@ $allowed_pages = [
     'superadmindash', 'add_user', 'edit_user', 'delete_user',
     'student_registration', 'instrucctorregistration', 'edit_student',
     'announcement_form', 'delete_announcement', 'drop_module', 'edit_announcement', 'edit_course',
-    'post_announcement', 'post_instructor_announcement',
+    'post_announcement', 'post_instructor_announcement', 'post_admin_announcement',
     'register_module', 'total_students', 'error_display',
     'view_announcements',
-    'manage_courses', 'manage_modules', 'manage_instructors'
+    'manage_courses', 'manage_modules', 'manage_instructors',
 ];
 
 $allowed_controllers = [

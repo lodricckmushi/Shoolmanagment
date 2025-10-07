@@ -31,6 +31,8 @@ $total_courses = $conn->query("SELECT COUNT(course_id) as count FROM courses")->
 $total_modules = $conn->query("SELECT COUNT(module_id) as count FROM modules")->fetch_assoc()['count'] ?? 0;
 $active_users = $conn->query("SELECT COUNT(id) as count FROM users WHERE status = 'active'")->fetch_assoc()['count'] ?? 0;
 $suspended_users = $conn->query("SELECT COUNT(id) as count FROM users WHERE status = 'suspended'")->fetch_assoc()['count'] ?? 0;
+$total_admins = $conn->query("SELECT COUNT(id) as count FROM users WHERE role = 'admin'")->fetch_assoc()['count'] ?? 0;
+$total_superadmins = $conn->query("SELECT COUNT(id) as count FROM users WHERE role = 'superadmin'")->fetch_assoc()['count'] ?? 0;
 
 // --- User Management Logic (Pagination & Search) ---
 $search_term = isset($_GET['search']) ? trim($_GET['search']) : '';
@@ -38,35 +40,50 @@ $page = isset($_GET['p']) ? (int)$_GET['p'] : 1;
 $results_per_page = 10;
 $offset = ($page - 1) * $results_per_page;
 
-$base_where = '';
+$filter_role = isset($_GET['filter_role']) ? $_GET['filter_role'] : '';
+
+// Base WHERE clause to always exclude students from this view
+$base_where = " WHERE u.role != 'student'";
+
+// Add role-based security: Admins cannot see superadmins
 if ($_SESSION['role'] === 'admin') {
-    // Admins cannot see superadmins
-    $base_where = " WHERE role != 'superadmin'";
+    $base_where .= " AND u.role != 'superadmin'";
 }
 
 $where_clause = $base_where;
 $params = [];
 $types = '';
+
+// Add quick filter from UI
+if ($filter_role === 'admin' || $filter_role === 'instructor') {
+    $where_clause .= " AND u.role = ?";
+    $params[] = $filter_role;
+    $types .= 's';
+}
+
 if (!empty($search_term)) {
-    $search_where = " (name LIKE ? OR email LIKE ? OR role LIKE ?)";
-    $where_clause .= (empty($base_where) ? ' WHERE' : ' AND') . $search_where;
+    $search_where = " (u.name LIKE ? OR u.email LIKE ? OR u.role LIKE ?)";
+    $where_clause .= " AND " . ltrim($search_where, ' ');
 
     $like_term = "%" . $search_term . "%";
-    $params = [$like_term, $like_term, $like_term];
-    $types = 'sss';
+    array_push($params, $like_term, $like_term, $like_term);
+    $types .= 'sss';
 }
 
 // Get total number of users for pagination
-$total_sql = "SELECT COUNT(id) as total FROM users" . $where_clause;
+$total_sql = "SELECT COUNT(u.id) as total FROM users u" . $where_clause;
 $total_stmt = $conn->prepare($total_sql);
-if (!empty($search_term)) $total_stmt->bind_param($types, ...$params);
+if (!empty($params)) $total_stmt->bind_param($types, ...$params);
 $total_stmt->execute();
 $total_users_filtered = $total_stmt->get_result()->fetch_assoc()['total'];
 $total_pages = ceil($total_users_filtered / $results_per_page);
 $total_stmt->close();
 
 // Fetch paginated user data
-$sql = "SELECT id, name, email, role, status, created_at FROM users" . $where_clause . " ORDER BY created_at DESC LIMIT ? OFFSET ?";
+$sql = "SELECT u.id, u.name, u.email, u.role, u.status, u.created_at, creator.name as creator_name 
+        FROM users u 
+        LEFT JOIN users creator ON u.created_by = creator.id" 
+        . $where_clause . " ORDER BY u.created_at DESC LIMIT ? OFFSET ?";
 $stmt = $conn->prepare($sql);
 $types .= 'ii';
 $params[] = $results_per_page;
@@ -87,8 +104,23 @@ try {
     // Table might not exist, so we'll just have an empty array. No need to crash.
 }
 
+// Fetch recent admin announcements
+$admin_announcements = [];
+try {
+    $admin_ann_sql = "SELECT title, content, created_at FROM admin_announcements ORDER BY created_at DESC LIMIT 5";
+    $admin_ann_result = $conn->query($admin_ann_sql);
+    if ($admin_ann_result) {
+        $admin_announcements = $admin_ann_result->fetch_all(MYSQLI_ASSOC);
+    }
+} catch (mysqli_sql_exception $e) {
+    // Table might not exist, so we'll just have an empty array.
+}
+
 $flash_message = $_SESSION['flash_message'] ?? null;
 unset($_SESSION['flash_message']);
+
+// Determine dashboard title based on role
+$dashboard_title = ($_SESSION['role'] === 'superadmin') ? 'Super Admin Dashboard' : 'Admin Dashboard';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -117,6 +149,15 @@ unset($_SESSION['flash_message']);
             0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
             70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
             100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+        }
+        .tab-section-header {
+            font-size: 1.1rem;
+            font-weight: 600;
+            background-color: #e9ecef;
+            padding: 0.75rem 1.25rem;
+            border-left: 4px solid #007bff;
+            margin-bottom: 1.5rem;
+            border-radius: 0.25rem;
         }
     </style>
 </head>
@@ -147,14 +188,15 @@ unset($_SESSION['flash_message']);
                 <ul class="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu" data-accordion="false">
                     <li class="nav-item"><a href="?page=superadmindash" class="nav-link active"><i class="nav-icon fas fa-tachometer-alt"></i><p>Dashboard</p></a></li>
                     <li class="nav-header">MANAGEMENT</li>
-                    <li class="nav-item"><a href="?page=total_students" class="nav-link"><i class="nav-icon fas fa-user-graduate"></i><p>Students</p></a></li>
                     <li class="nav-item"><a href="?page=manage_instructors" class="nav-link"><i class="nav-icon fas fa-chalkboard-teacher"></i><p>Instructors</p></a></li>
                     <li class="nav-item"><a href="?page=manage_courses" class="nav-link"><i class="nav-icon fas fa-book"></i><p>Courses</p></a></li>
                     <li class="nav-item"><a href="?page=manage_modules" class="nav-link"><i class="nav-icon fas fa-layer-group"></i><p>Modules</p></a></li>
                     <li class="nav-header">COMMUNICATION</li>
-                    <li class="nav-item"><a href="?page=post_instructor_announcement" class="nav-link"><i class="nav-icon fas fa-bullhorn"></i><p>Instructor Announcements</p></a></li>
-                    <li class="nav-item"><a href="?page=post_announcement" class="nav-link"><i class="nav-icon fas fa-bullhorn"></i><p>Student Announcements</p></a></li>
-                    <li class="nav-header">USERS</li>
+                    <?php if ($_SESSION['role'] === 'superadmin'): ?>
+                        <li class="nav-item"><a href="?page=post_admin_announcement" class="nav-link"><i class="nav-icon fas fa-user-shield"></i><p>Admin Announcements</p></a></li>
+                    <?php endif; ?>
+                    <li class="nav-item"><a href="?page=post_instructor_announcement" class="nav-link"><i class="nav-icon fas fa-chalkboard-teacher"></i><p>Instructor Announcements</p></a></li>
+                    <li class="nav-header">USER MANAGEMENT</li>
                     <li class="nav-item"><a href="?page=add_user" class="nav-link"><i class="nav-icon fas fa-user-plus"></i><p>Add New User</p></a></li>
                 </ul>
             </nav>
@@ -165,7 +207,7 @@ unset($_SESSION['flash_message']);
     <div class="content-wrapper">
         <div class="content-header">
             <div class="container-fluid">
-                <h1 class="m-0">Admin Dashboard</h1>
+                <h1 class="m-0"><?= $dashboard_title ?></h1>
             </div>
         </div>
 
@@ -186,21 +228,31 @@ unset($_SESSION['flash_message']);
                             <!-- User Management Tab -->
                             <div class="tab-pane fade show active" id="tab-users" role="tabpanel">
                                 <?php if ($flash_message): ?><div class="alert alert-success mb-3"><?= $flash_message ?></div><?php endif; ?>
-                                <div class="d-flex justify-content-between mb-3">
-                                    <h4>All System Users (<?= $total_users_filtered ?>)</h4>
-                                    <a href="?page=add_user" class="btn btn-success"><i class="fas fa-user-plus"></i> Add New User</a>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h4 class="mb-0"><i class="fas fa-users-cog"></i> Staff Management (<?= $total_users_filtered ?>)</h4>
+                                    <a href="?page=add_user" class="btn btn-success btn-sm"><i class="fas fa-user-plus"></i> Add New User</a>
                                 </div>
-                                <form method="GET" class="mb-3">
-                                    <input type="hidden" name="page" value="superadmindash">
-                                    <div class="input-group">
-                                        <input type="text" name="search" class="form-control" placeholder="Search by name, email, or role..." value="<?= htmlspecialchars($search_term) ?>">
-                                        <div class="input-group-append"><button class="btn btn-primary" type="submit"><i class="fas fa-search"></i></button></div>
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div class="btn-group" role="group">
+                                        <a href="?page=superadmindash" class="btn btn-sm <?= empty($filter_role) ? 'btn-primary' : 'btn-outline-primary' ?>">All Staff</a>
+                                        <?php if ($_SESSION['role'] === 'superadmin'): ?>
+                                        <a href="?page=superadmindash&filter_role=admin" class="btn btn-sm <?= ($filter_role === 'admin') ? 'btn-primary' : 'btn-outline-primary' ?>">Admins</a>
+                                        <?php endif; ?>
+                                        <a href="?page=superadmindash&filter_role=instructor" class="btn btn-sm <?= ($filter_role === 'instructor') ? 'btn-primary' : 'btn-outline-primary' ?>">Instructors</a>
                                     </div>
-                                </form>
+                                    <form method="GET" class="mb-0">
+                                        <input type="hidden" name="page" value="superadmindash">
+                                        <input type="hidden" name="filter_role" value="<?= htmlspecialchars($filter_role) ?>">
+                                        <div class="input-group input-group-sm" style="width: 250px;">
+                                            <input type="text" name="search" class="form-control" placeholder="Search staff..." value="<?= htmlspecialchars($search_term) ?>">
+                                            <div class="input-group-append"><button class="btn btn-primary" type="submit"><i class="fas fa-search"></i></button></div>
+                                        </div>
+                                    </form>
+                                    </div>
                                 <div class="table-responsive">
                                     <table class="table table-bordered table-hover">
                                         <thead>
-                                            <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr>
+                                            <tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Created By</th><th>Actions</th></tr>
                                         </thead>
                                         <tbody>
                                         <?php if (count($users) > 0): ?>
@@ -216,6 +268,7 @@ unset($_SESSION['flash_message']);
                                                             <span class="badge badge-danger">Suspended</span>
                                                         <?php endif; ?>
                                                     </td>
+                                                    <td><?= htmlspecialchars($user['creator_name'] ?? 'System') ?></td>
                                                     <td>
                                                         <a href="?page=edit_user&id=<?= $user['id'] ?>" class="btn btn-xs btn-primary" title="Edit"><i class="fas fa-edit"></i></a>
                                                         <?php if ($user['id'] != $_SESSION['user_id']): // Can't delete self ?>
@@ -228,7 +281,7 @@ unset($_SESSION['flash_message']);
                                                 </tr>
                                             <?php endforeach; ?>
                                         <?php else: ?>
-                                            <tr><td colspan="5" class="text-center">No users found.</td></tr>
+                                            <tr><td colspan="6" class="text-center">No users found.</td></tr>
                                         <?php endif; ?>
                                         </tbody>
                                     </table>
@@ -238,7 +291,7 @@ unset($_SESSION['flash_message']);
                                     <ul class="pagination justify-content-center">
                                         <?php for ($i = 1; $i <= $total_pages; $i++): ?>
                                             <li class="page-item <?= ($i == $page) ? 'active' : '' ?>">
-                                                <a class="page-link" href="?page=superadmindash&p=<?= $i ?>&search=<?= urlencode($search_term) ?>"><?= $i ?></a>
+                                                <a class="page-link" href="?page=superadmindash&p=<?= $i ?>&filter_role=<?= urlencode($filter_role) ?>&search=<?= urlencode($search_term) ?>"><?= $i ?></a>
                                             </li>
                                         <?php endfor; ?>
                                     </ul>
@@ -247,11 +300,22 @@ unset($_SESSION['flash_message']);
                             <!-- System Statistics Tab -->
                             <div class="tab-pane fade" id="tab-stats" role="tabpanel">
                                 <div class="row">
+                                    <div class="col-12"><h5 class="tab-section-header">User Overview</h5></div>
                                     <div class="col-lg-3 col-6"><div class="small-box bg-info"><div class="inner"><h3><?= $total_users ?></h3><p>Total Users</p></div><div class="icon"><i class="fas fa-users"></i></div></div></div>
                                     <div class="col-lg-3 col-6"><div class="small-box bg-success"><div class="inner"><h3><?= $active_users ?></h3><p>Active Users</p></div><div class="icon"><i class="fas fa-user-check"></i></div></div></div>
                                     <div class="col-lg-3 col-6"><div class="small-box bg-danger"><div class="inner"><h3><?= $suspended_users ?></h3><p>Suspended Users</p></div><div class="icon"><i class="fas fa-user-slash"></i></div></div></div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-12"><h5 class="tab-section-header">Role Breakdown</h5></div>
+                                    <?php if ($_SESSION['role'] === 'superadmin'): ?>
+                                    <div class="col-lg-3 col-6"><div class="small-box bg-purple"><div class="inner"><h3><?= $total_superadmins ?></h3><p>Super Admins</p></div><div class="icon"><i class="fas fa-user-shield"></i></div></div></div>
+                                    <?php endif; ?>
+                                    <div class="col-lg-3 col-6"><div class="small-box bg-indigo"><div class="inner"><h3><?= $total_admins ?></h3><p>Admins</p></div><div class="icon"><i class="fas fa-user-cog"></i></div></div></div>
                                     <div class="col-lg-3 col-6"><div class="small-box bg-primary"><div class="inner"><h3><?= $total_instructors ?></h3><p>Instructors</p></div><div class="icon"><i class="fas fa-chalkboard-teacher"></i></div></div></div>
                                     <div class="col-lg-3 col-6"><div class="small-box bg-warning"><div class="inner"><h3><?= $total_students ?></h3><p>Students</p></div><div class="icon"><i class="fas fa-user-graduate"></i></div></div></div>
+                                </div>
+                                <div class="row">
+                                    <div class="col-12"><h5 class="tab-section-header">Content Overview</h5></div>
                                     <div class="col-lg-3 col-6"><div class="small-box bg-secondary"><div class="inner"><h3><?= $total_courses ?></h3><p>Courses</p></div><div class="icon"><i class="fas fa-book"></i></div></div></div>
                                     <div class="col-lg-3 col-6"><div class="small-box bg-dark"><div class="inner"><h3><?= $total_modules ?></h3><p>Modules</p></div><div class="icon"><i class="fas fa-layer-group"></i></div></div></div>
                                 </div>
@@ -259,37 +323,44 @@ unset($_SESSION['flash_message']);
                             <!-- Announcements Tab -->
                             <div class="tab-pane fade" id="tab-announcements" role="tabpanel">
                                 <div class="row">
+                                    <div class="col-12"><h5 class="tab-section-header">Recent Communications</h5></div>
+                                    <?php if ($_SESSION['role'] === 'superadmin'): ?>
                                     <div class="col-md-6">
                                         <div class="card card-outline card-info">
-                                            <div class="card-header"><h3 class="card-title"><i class="fas fa-bullhorn mr-1"></i> Instructor Announcements</h3></div>
-                                            <div class="card-body">
+                                            <div class="card-header"><h3 class="card-title"><i class="fas fa-user-shield mr-1"></i> Admin Announcements</h3></div>
+                                            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
+                                                <?php if (empty($admin_announcements)): ?>
+                                                    <p class="text-muted">No announcements for admins yet.</p>
+                                                <?php else: ?>
+                                                    <?php foreach($admin_announcements as $ann): ?>
+                                                        <div class="post">
+                                                            <div class="user-block"><span class="username ml-0"><a href="#"><?= htmlspecialchars($ann['title']) ?></a></span><span class="description ml-0">Posted on <?= date('M d, Y', strtotime($ann['created_at'])) ?></span></div>
+                                                        <p><?= substr(strip_tags(html_entity_decode($ann['content'])), 0, 100) ?>...</p>
+                                                        </div>
+                                                    <?php endforeach; ?>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="card-footer text-center"><a href="?page=post_admin_announcement" class="btn btn-info"><i class="fas fa-plus-circle"></i> Post to Admins</a></div>
+                                        </div>
+                                    </div>
+                                    <?php endif; ?>
+                                    <div class="col-md-6">
+                                        <div class="card card-outline card-info">
+                                            <div class="card-header"><h3 class="card-title"><i class="fas fa-chalkboard-teacher mr-1"></i> Instructor Announcements</h3></div>
+                                            <div class="card-body" style="max-height: 400px; overflow-y: auto;">
                                                 <?php if (empty($instructor_announcements)): ?>
                                                     <p class="text-muted">No announcements for instructors yet.</p>
                                                 <?php else: ?>
                                                     <?php foreach($instructor_announcements as $ann): ?>
                                                         <div class="post">
-                                                            <div class="user-block">
-                                                                <span class="username ml-0"><a href="#"><?= htmlspecialchars($ann['title']) ?></a></span>
-                                                                <span class="description ml-0">Posted on <?= date('M d, Y', strtotime($ann['created_at'])) ?></span>
-                                                            </div>
-                                                            <p><?= htmlspecialchars(substr(strip_tags(html_entity_decode($ann['content'])), 0, 100)) ?>...</p>
+                                                            <div class="user-block"><span class="username ml-0"><a href="#"><?= htmlspecialchars($ann['title']) ?></a></span><span class="description ml-0">Posted on <?= date('M d, Y', strtotime($ann['created_at'])) ?></span></div>
+                                                        <p><?= substr(strip_tags(html_entity_decode($ann['content'])), 0, 100) ?>...</p>
                                                         </div>
                                                     <?php endforeach; ?>
                                                 <?php endif; ?>
                                             </div>
                                             <div class="card-footer text-center">
                                                 <a href="?page=post_instructor_announcement" class="btn btn-primary"><i class="fas fa-plus-circle"></i> Post to Instructors</a>
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="card card-outline card-warning">
-                                            <div class="card-header"><h3 class="card-title"><i class="fas fa-bullhorn mr-1"></i> Student Announcements</h3></div>
-                                            <div class="card-body">
-                                                <p class="text-muted">Feature to view student announcements can be added here.</p>
-                                            </div>
-                                            <div class="card-footer text-center">
-                                                <a href="?page=post_announcement" class="btn btn-warning"><i class="fas fa-plus-circle"></i> Post to Students</a>
                                             </div>
                                         </div>
                                     </div>

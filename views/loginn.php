@@ -1,46 +1,15 @@
 <?php
-// Start session only if not already started
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-include 'connection.php';
-
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $email = $_POST['email'];
-    $password = $_POST['password'];
-
-    // Check user exists
-    $sql = "SELECT id, name, password, role FROM users WHERE email = ?";
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param("s", $email);
-    $stmt->execute();
-    $result = $stmt->get_result();
-
-    if ($result->num_rows === 1) {
-        $user = $result->fetch_assoc();
-
-        // For demo purposes, using plain password. Later use password_verify()
-        if ($password === $user['password']) {
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['role'] = $user['role'];
-
-            // Redirect based on role
-            if ($user['role'] === 'student') {
-                header("Location: ?page=studentdash");
-            } elseif ($user['role'] === 'instructor') {
-                header("Location: ?page=instructordash");
-            } else {
-                header("Location: ?page=admin_dashboard");
-            }
-            exit();
-        } else {
-            echo "❌ Invalid password!";
-        }
-    } else {
-        echo "❌ Invalid email!";
+$error_message = '';
+if (isset($_GET['error'])) {
+    switch ($_GET['error']) {
+        case 'suspended':
+            $error_message = 'Your account has been suspended. Please contact an administrator.';
+            break;
+        case 'invalid':
+            $error_message = 'Invalid email or password. Please try again.';
+            break;
     }
 }
-$conn->close();
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -54,7 +23,8 @@ $conn->close();
   <div class="card card-outline card-primary">
     <div class="card-header text-center"><b>Login</b></div>
     <div class="card-body">
-      <form action="login2_controller.php" method="POST">
+      <?php if ($error_message): ?><div class="alert alert-danger text-center"><?= htmlspecialchars($error_message) ?></div><?php endif; ?>
+      <form action="?page=login2_controller" method="POST">
         <div class="input-group mb-3">
           <input type="email" name="email" class="form-control" placeholder="Email" required>
           <div class="input-group-append">

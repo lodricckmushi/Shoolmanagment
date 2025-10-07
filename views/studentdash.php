@@ -242,7 +242,7 @@ if ($course_id && $student_id) {
           <div class="col-md-6 mb-3">
             <div class="card h-100">
               <div class="card-header bg-success text-white">
-                <h5 class="mb-0"><i class="fas fa-layer-group"></i> Available Modules to Register</h5>
+                <h5 class="mb-0"><i class="fas fa-layer-group"></i> Available Modules to Register <span class="badge badge-light"><?= count($available_modules) ?></span></h5>
               </div>
               <div class="card-body">
                 <?php if (count($available_modules) > 0): ?>
@@ -269,7 +269,7 @@ if ($course_id && $student_id) {
           <div class="col-md-6 mb-3">
             <div class="card h-100">
               <div class="card-header bg-primary text-white">
-                <h5 class="mb-0"><i class="fas fa-book"></i> Registered Modules</h5>
+                <h5 class="mb-0"><i class="fas fa-book"></i> Registered Modules <span class="badge badge-light"><?= count($registered_modules) ?></span></h5>
               </div>
               <div class="card-body">
                 <?php if (count($registered_modules) > 0): ?>

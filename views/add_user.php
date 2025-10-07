@@ -12,12 +12,15 @@ $conn = getDBConnection();
 
 // Define roles based on the current user's role
 if ($_SESSION['role'] === 'superadmin') {
-    $roles = ['student', 'instructor', 'manager', 'superadmin'];
+    $roles = ['student', 'instructor', 'admin', 'superadmin'];
 } else { // 'admin' role
     $roles = ['student', 'instructor'];
 }
 $preselected_role = $_GET['role'] ?? '';
 $message = '';
+
+// Fetch courses for the dropdown
+$courses = $conn->query("SELECT course_id, course_name, course_code FROM courses ORDER BY course_name")->fetch_all(MYSQLI_ASSOC);
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $name = trim($_POST['name']);
@@ -42,11 +45,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($role === 'student') {
                 // Note: The 'students' table also has a password column, which is redundant.
                 // Storing the hashed password here for consistency with student_controller.
-                $sql_student = "INSERT INTO students (user_id, name, email, password) VALUES (?, ?, ?, ?)";
+                $sql_student = "INSERT INTO students (name, email, password) VALUES (?, ?, ?)";
                 $stmt_student = $conn->prepare($sql_student);
-                $stmt_student->bind_param("isss", $user_id, $name, $email, $password);
+                $stmt_student->bind_param("sss", $name, $email, $password);
                 $stmt_student->execute();
+                $student_id = $stmt_student->insert_id;
                 $stmt_student->close();
+
+                // Also enroll the student in the selected course
+                $course_id = isset($_POST['course_id']) ? (int)$_POST['course_id'] : 0;
+                if ($course_id > 0) {
+                    $stmt_enroll = $conn->prepare("INSERT INTO student_course_enrollments (student_id, course_id) VALUES (?, ?)");
+                    $stmt_enroll->bind_param("ii", $student_id, $course_id);
+                    $stmt_enroll->execute();
+                    $stmt_enroll->close();
+                }
             }
 
             // 3. If instructor, insert into 'instructors' table
@@ -119,11 +132,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <?php endforeach; ?>
                     </select>
                 </div>
+                <div class="form-group" id="course-assignment-group" style="display: none;">
+                    <label for="course_id">Assign Course</label>
+                    <select id="course_id" name="course_id" class="form-control">
+                        <option value="">-- Select a course for the student --</option>
+                        <?php foreach ($courses as $course): ?>
+                            <option value="<?= $course['course_id'] ?>"><?= htmlspecialchars($course['course_name']) ?> (<?= htmlspecialchars($course['course_code']) ?>)</option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
                 <button type="submit" class="btn btn-success"><i class="fas fa-check"></i> Add User</button>
                 <a href="?page=superadmindash" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Back to Dashboard</a>
             </form>
         </div>
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const roleSelect = document.getElementById('role');
+    const courseGroup = document.getElementById('course-assignment-group');
+
+    function toggleCourseVisibility() {
+        courseGroup.style.display = (roleSelect.value === 'student') ? 'block' : 'none';
+    }
+
+    roleSelect.addEventListener('change', toggleCourseVisibility);
+    toggleCourseVisibility(); // Run on page load
+});
+</script>
 </body>
 </html>

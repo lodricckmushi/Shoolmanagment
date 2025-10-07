@@ -102,11 +102,23 @@ if ($row_inst = $res_inst->fetch_assoc()) {
 }
 $stmt_inst->close();
 
-// Fetch all modules (either assigned to this course or unassigned)
-$stmt_mod = $conn->prepare("SELECT module_id, module_name, module_code, course_id FROM modules WHERE course_id = ? OR course_id IS NULL ORDER BY module_name");
-$stmt_mod->bind_param("i", $course_id);
+// Separate modules into "assigned" to this course and "available" (unassigned or assigned to other courses)
+$assigned_modules_list = [];
+$available_modules_list = [];
+$stmt_mod = $conn->prepare("
+    SELECT m.module_id, m.module_name, m.module_code, m.course_id, c.course_name as assigned_course_name
+    FROM modules m
+    LEFT JOIN courses c ON m.course_id = c.course_id
+    ORDER BY m.module_name
+");
 $stmt_mod->execute();
-$modules = $stmt_mod->get_result()->fetch_all(MYSQLI_ASSOC);
+foreach ($stmt_mod->get_result()->fetch_all(MYSQLI_ASSOC) as $module) {
+    if ($module['course_id'] == $course_id) {
+        $assigned_modules_list[] = $module;
+    } else {
+        $available_modules_list[] = $module;
+    }
+}
 $stmt_mod->close();
 
 ?>
@@ -119,7 +131,21 @@ $stmt_mod->close();
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
     .form-section-title { border-bottom: 2px solid #343a40; padding-bottom: 0.5rem; margin-bottom: 1.5rem; font-weight: 600; color: #343a40;}
-    .module-list { max-height: 250px; overflow-y: auto; border: 1px solid #ddd; padding: 10px; border-radius: 5px; }
+    .dual-list-box {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .dual-list-box .list-container {
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        height: 300px;
+        overflow-y: auto;
+        width: 45%;
+    }
+    .dual-list-box .list-group-item { cursor: pointer; }
+    .dual-list-box .list-group-item.active { background-color: #007bff; color: white; border-color: #007bff; }
+    .dual-list-box .controls { width: 10%; text-align: center; }
   </style>
 </head>
 <body class="bg-light">
@@ -181,25 +207,41 @@ $stmt_mod->close();
 
                 <!-- Section 3: Module Assignment -->
                 <h5 class="form-section-title mt-4"><i class="fas fa-layer-group"></i> Manage Modules</h5>
-                <p>Select the modules that belong to this course. Unchecked modules will be unassigned.</p>
-                <div class="row">
-                    <div class="col-md-12 form-group">
-                        <div class="module-list">
-                            <?php if (empty($modules)): ?>
-                                <p class="text-muted">No available modules to assign.</p>
-                            <?php else: ?>
-                                <?php foreach ($modules as $module): ?>
-                                    <div class="custom-control custom-checkbox">
-                                        <input type="checkbox" class="custom-control-input" id="module_<?= $module['module_id'] ?>" name="modules[]" value="<?= $module['module_id'] ?>" <?= ($module['course_id'] == $course_id) ? 'checked' : '' ?>>
-                                        <label class="custom-control-label" for="module_<?= $module['module_id'] ?>">
-                                            <?= htmlspecialchars($module['module_name']) ?> (<?= htmlspecialchars($module['module_code']) ?>)
-                                            <?php if ($module['course_id'] && $module['course_id'] != $course_id): ?>
-                                                <span class="badge badge-warning">Assigned to another course</span>
-                                            <?php endif; ?>
-                                        </label>
-                                    </div>
+                <div class="dual-list-box">
+                    <!-- Available Modules -->
+                    <div class="list-wrapper" style="width: 45%;">
+                        <h6>Available Modules</h6>
+                        <input type="text" id="available-search" class="form-control mb-2" placeholder="Search available...">
+                        <ul id="available-modules" class="list-group list-container">
+                            <?php foreach ($available_modules_list as $module): ?>
+                                <li class="list-group-item" data-id="<?= $module['module_id'] ?>">
+                                    <?= htmlspecialchars($module['module_name']) ?> <span class="text-muted">(<?= htmlspecialchars($module['module_code']) ?>)</span>
+                                    <?php if ($module['course_id']): ?>
+                                        <span class="badge badge-warning float-right mt-1">Assigned to: <?= htmlspecialchars($module['assigned_course_name']) ?></span>
+                                    <?php endif; ?>
+                                </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+
+                    <!-- Controls -->
+                    <div class="controls">
+                        <button type="button" id="add-module" class="btn btn-secondary mb-2 w-100">&gt;</button>
+                        <button type="button" id="remove-module" class="btn btn-secondary w-100">&lt;</button>
+                    </div>
+
+                    <!-- Assigned Modules -->
+                    <div class="list-wrapper" style="width: 45%;">
+                        <h6>Assigned Modules</h6>
+                        <div id="assigned-modules-container">
+                            <ul id="assigned-modules" class="list-group list-container">
+                                <?php foreach ($assigned_modules_list as $module): ?>
+                                    <li class="list-group-item" data-id="<?= $module['module_id'] ?>">
+                                        <?= htmlspecialchars($module['module_name']) ?> <span class="text-muted">(<?= htmlspecialchars($module['module_code']) ?>)</span>
+                                        <input type="hidden" name="modules[]" value="<?= $module['module_id'] ?>">
+                                    </li>
                                 <?php endforeach; ?>
-                            <?php endif; ?>
+                            </ul>
                         </div>
                     </div>
                 </div>
@@ -213,6 +255,61 @@ $stmt_mod->close();
 
 <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+$(document).ready(function() {
+    function moveItems(fromList, toList) {
+        fromList.find('.active').each(function() {
+            $(this).removeClass('active').appendTo(toList);
+            updateHiddenInputs();
+        });
+    }
+
+    function updateHiddenInputs() {
+        // Clear previous hidden inputs from the form that might be outside the list
+        $('input[name="modules[]"]').remove();
+        // Add a hidden input for each item in the assigned list
+        $('#assigned-modules li').each(function() {
+            const moduleId = $(this).data('id');
+            $('<input>').attr({
+                type: 'hidden',
+                name: 'modules[]',
+                value: moduleId
+            }).appendTo('form');
+        });
+    }
+
+    // Toggle active class on click
+    $('.dual-list-box').on('click', '.list-group-item', function(e) {
+        if (!e.ctrlKey) {
+            $(this).siblings().removeClass('active');
+        }
+        $(this).toggleClass('active');
+    });
+
+    // Move from available to assigned
+    $('#add-module').on('click', function() {
+        moveItems($('#available-modules'), $('#assigned-modules'));
+    });
+
+    // Move from assigned to available
+    $('#remove-module').on('click', function() {
+        moveItems($('#assigned-modules'), $('#available-modules'));
+    });
+
+    // Live search for available modules
+    $('#available-search').on('keyup', function() {
+        const searchTerm = $(this).val().toLowerCase();
+        $('#available-modules li').each(function() {
+            const text = $(this).text().toLowerCase();
+            if (text.includes(searchTerm)) {
+                $(this).show();
+            } else {
+                $(this).hide();
+            }
+        });
+    });
+});
+</script>
 </body>
 </html>
 <?php $conn->close(); ?>

@@ -4,7 +4,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 // Role check: only instructors and superadmins can edit
-if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['instructor', 'superadmin'])) {
+if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['instructor', 'superadmin', 'admin'])) {
     header('Location: ?page=login');
     exit;
 }
@@ -28,50 +28,50 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $course_id = !empty($_POST['course_id']) ? $_POST['course_id'] : null;
     $id = $_POST['student_id'];
 
-    // Update students table
-    $sql = "UPDATE students SET name = ?, semester = ?, enrollment_year = ?, department_id = ? WHERE student_id = ?";
-    $stmt = $conn->prepare($sql);
-    if ($stmt) {
+    $conn->begin_transaction();
+    try {
+        // Update students table
+        $sql = "UPDATE students SET name = ?, semester = ?, enrollment_year = ?, department_id = ? WHERE student_id = ?";
+        $stmt = $conn->prepare($sql);
+        if (!$stmt) throw new Exception($conn->error);
+        
         $stmt->bind_param("sisii", $name, $semester, $enrollment_year, $department_id, $id);
-        if ($stmt->execute()) {
-            $message = "<div class='alert alert-success'>✅ Student data updated successfully!</div>";
-        } else {
-            $message = "<div class='alert alert-danger'>❌ Error updating record: " . $stmt->error . "</div>";
-        }
+        if (!$stmt->execute()) throw new Exception($stmt->error);
         $stmt->close();
-    } else {
-        $message = "<div class='alert alert-danger'>❌ Prepare failed: " . $conn->error . "</div>";
-    }
 
-    // Update course enrollment (UPSERT logic)
-    if ($course_id) {
-        $check_sql = "SELECT enrollment_id FROM student_course_enrollments WHERE student_id = ?";
-        $check_stmt = $conn->prepare($check_sql);
-        $check_stmt->bind_param("i", $id);
-        $check_stmt->execute();
-        $enrollment_result = $check_stmt->get_result();
+        // Update course enrollment (UPSERT logic)
+        if ($course_id) {
+            $check_sql = "SELECT enrollment_id FROM student_course_enrollments WHERE student_id = ?";
+            $check_stmt = $conn->prepare($check_sql);
+            $check_stmt->bind_param("i", $id);
+            $check_stmt->execute();
+            $enrollment_result = $check_stmt->get_result();
 
-        if ($enrollment_result->num_rows > 0) {
-            // Student is already enrolled, so UPDATE
-            $enrollment = $enrollment_result->fetch_assoc();
-            $enrollment_id = $enrollment['enrollment_id'];
-            $upsert_sql = "UPDATE student_course_enrollments SET course_id = ? WHERE enrollment_id = ?";
-            $upsert_stmt = $conn->prepare($upsert_sql);
-            $upsert_stmt->bind_param("ii", $course_id, $enrollment_id);
-        } else {
-            // Student is not enrolled, so INSERT
-            $upsert_sql = "INSERT INTO student_course_enrollments (student_id, course_id) VALUES (?, ?)";
-            $upsert_stmt = $conn->prepare($upsert_sql);
-            $upsert_stmt->bind_param("ii", $id, $course_id);
+            if ($enrollment_result->num_rows > 0) {
+                // Student is already enrolled, so UPDATE
+                $enrollment = $enrollment_result->fetch_assoc();
+                $enrollment_id = $enrollment['enrollment_id'];
+                $upsert_sql = "UPDATE student_course_enrollments SET course_id = ? WHERE enrollment_id = ?";
+                $upsert_stmt = $conn->prepare($upsert_sql);
+                $upsert_stmt->bind_param("ii", $course_id, $enrollment_id);
+            } else {
+                // Student is not enrolled, so INSERT
+                $upsert_sql = "INSERT INTO student_course_enrollments (student_id, course_id) VALUES (?, ?)";
+                $upsert_stmt = $conn->prepare($upsert_sql);
+                $upsert_stmt->bind_param("ii", $id, $course_id);
+            }
+
+            if (!$upsert_stmt->execute()) throw new Exception($upsert_stmt->error);
+            
+            $upsert_stmt->close();
+            $check_stmt->close();
         }
-
-        if ($upsert_stmt->execute()) {
-            $message .= "<div class='alert alert-success'>✅ Course enrollment updated successfully!</div>";
-        } else {
-            $message .= "<div class='alert alert-danger'>❌ Failed to update course enrollment.</div>";
-        }
-        $upsert_stmt->close();
-        $check_stmt->close();
+        
+        $conn->commit();
+        $message = "<div class='alert alert-success'>✅ Student academic and course enrollment details have been updated successfully!</div>";
+    } catch (Exception $e) {
+        $conn->rollback();
+        $message = "<div class='alert alert-danger'>❌ Error: " . $e->getMessage() . "</div>";
     }
 }
 
