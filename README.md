@@ -5,7 +5,7 @@
 ![Student Cartoon](https://img.freepik.com/free-vector/hand-drawn-flat-design-stack-books-illustration_23-2149334862.jpg)
 
 ### 🚀 Advanced PHP-Based Educational Platform
-
+admin dashboard to manage instructor , course, modules also students , also can post announcement to instructors , 
 [![PHP Version](https://img.shields.io/badge/PHP-8.2+-blue.svg)](https://www.php.net)
 [![MySQL](https://img.shields.io/badge/MySQL-8.0+-orange.svg)](https://www.mysql.com)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)

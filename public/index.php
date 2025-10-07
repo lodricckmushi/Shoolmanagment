@@ -16,16 +16,19 @@ $page = isset($_GET['page']) ? $_GET['page'] : 'login';
 $allowed_pages = [
     'login', 'login2', 'loginn', 'logout',
     'studentdash', 'instructordash',
-    'student_registration', 'instrucctorregistration',
-    'announcement_form', 'delete_announcement', 'drop_module', 'edit_announcement',
-    'post_announcement', 'post2_announcement',
-    'register_module', 'total_students',
-    'view_announcements'
+    'superadmindash', 'add_user', 'edit_user', 'delete_user',
+    'student_registration', 'instrucctorregistration', 'edit_student',
+    'announcement_form', 'delete_announcement', 'drop_module', 'edit_announcement', 'edit_course',
+    'post_announcement', 'post_instructor_announcement', 'post_admin_announcement',
+    'register_module', 'total_students', 'error_display',
+    'view_announcements',
+    'manage_courses', 'manage_modules', 'manage_instructors',
 ];
 
 $allowed_controllers = [
     'login_controller', 'login2_controller', 'student_controller',
-    'userinstructor_controller', 'userstudent_controller', 'controller'
+    'userinstructor_controller', 'userstudent_controller', 'controller',
+    'delete_student_controller'
 ];
 
 if (in_array($page, $allowed_pages)) {

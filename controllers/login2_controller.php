@@ -7,7 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $password = $_POST['password'];
 
     // Check user exists
-    $sql = "SELECT id, name, password, role FROM users WHERE email = ?";
+    $sql = "SELECT id, name, password, role, status FROM users WHERE email = ?";
     $stmt = $conn->prepare($sql);
     $stmt->bind_param("s", $email);
     $stmt->execute();
@@ -16,25 +16,34 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if ($result->num_rows === 1) {
         $user = $result->fetch_assoc();
 
-        // For demo purposes, using plain password. Later use password_verify()
-        if ($password === $user['password']) {
+        if ($user['status'] === 'suspended') {
+            header("Location: ?page=loginn&error=suspended");
+            exit;
+        }
+
+        // Verify the password against the stored hash
+        if (password_verify($password, $user['password'])) {
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['role'] = $user['role'];
-
+            $_SESSION['email'] = $user['email']; // Store email in session for consistency
+            
             // Redirect based on role
             if ($user['role'] === 'student') {
                 header("Location: ?page=studentdash");
             } elseif ($user['role'] === 'instructor') {
                 header("Location: ?page=instructordash");
             } else {
-                header("Location: ?page=admin_dashboard");
+                // Redirect both 'admin' and 'superadmin' to the main admin dashboard
+                header("Location: ?page=superadmindash");
             }
             exit();
         } else {
-            echo "❌ Invalid password!";
+            header("Location: ?page=loginn&error=invalid");
+            exit;
         }
     } else {
-        echo "❌ Invalid email!";
+        header("Location: ?page=loginn&error=invalid");
+        exit;
     }
 }
 $conn->close();

@@ -1,4 +1,26 @@
 <!DOCTYPE html>
+<?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+include_once __DIR__ . '/../config/connection.php';
+
+// Ensure instructor is logged in
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'instructor' || !isset($_SESSION['email'])) {
+    header('Location: ?page=login');
+    exit;
+}
+
+$instructor_name = '';
+$stmt = $conn->prepare("SELECT name FROM users WHERE email = ? AND role = 'instructor' LIMIT 1");
+$stmt->bind_param("s", $_SESSION['email']);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result && $user = $result->fetch_assoc()) {
+    $instructor_name = $user['name'];
+}
+$stmt->close();
+?>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -10,6 +32,21 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
   <!-- Font Awesome -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .online-indicator {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        background-color: #28a745;
+        border-radius: 50%;
+        animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+        0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+    }
+  </style>
 </head>
 <body class="hold-transition sidebar-mini">
 <div class="wrapper">
@@ -83,10 +120,13 @@
       <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center">
           <h1 class="m-0">Instructor Dashboard</h1>
-          <span class="badge badge-info p-2" style="font-size:1.1em;">Welcome, Instructor!</span>
+          <span class="badge badge-light p-2" style="font-size:1.1em; font-weight: 600;">
+            <span class="online-indicator"></span>
+            Welcome, <?= htmlspecialchars($instructor_name ?: 'Instructor') ?>!
+          </span>
         </div>
         <?php
-        include __DIR__ . '/../config/connection.php';
+        // Connection is already included
         // Announcements count
         $res = $conn->query("SELECT COUNT(*) as cnt FROM announcements");
         $row = $res ? $res->fetch_assoc() : ['cnt'=>0];

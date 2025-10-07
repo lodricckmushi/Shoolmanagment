@@ -6,7 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 include __DIR__ . '/../config/connection.php';
 
 // Fetch all announcements
-$sql = "SELECT id, title FROM announcements ORDER BY created_at DESC";
+$sql = "SELECT id, title, created_at FROM announcements ORDER BY created_at DESC";
 $result = $conn->query($sql);
 $announcements = [];
 if ($result && $result->num_rows > 0) {
@@ -44,11 +44,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['announcement_id'])) {
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    #confetti-canvas { position: fixed; pointer-events: none; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; display: none; }
+    .confetti-canvas { position: fixed; pointer-events: none; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; }
+    .list-group-item-action { cursor: pointer; }
   </style>
 </head>
 <body class="hold-transition sidebar-mini">
-<canvas id="confetti-canvas"></canvas>
+<?php if ($success): ?><canvas id="confetti-canvas"></canvas><?php endif; ?>
 <div class="wrapper">
   <!-- Home Button -->
   <a href="?page=instructordash" class="btn btn-danger position-fixed" style="top: 20px; left: 20px; z-index: 1050; border-radius: 50%; width: 50px; height: 50px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.15);">
@@ -56,57 +57,115 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['announcement_id'])) {
   </a>
   <div class="content-wrapper p-4">
     <h2>Delete Announcement</h2>
+
     <?php if ($success): ?>
-      <div class="alert alert-success">Announcement deleted successfully!</div>
-      <script>window.addEventListener('DOMContentLoaded',function(){document.getElementById('confetti-canvas').style.display='block';confettiRain();setTimeout(()=>{document.getElementById('confetti-canvas').style.display='none';},3000);});</script>
+      <div class="alert alert-success">The announcement was deleted successfully.</div>
     <?php endif; ?>
-    <form method="POST" action="?page=delete_announcement">
-      <div class="form-group">
-        <label for="delete-announcement">Select Announcement</label>
-        <select class="form-control" id="delete-announcement" name="announcement_id" required>
-          <option value="">-- Choose Announcement --</option>
-          <?php foreach ($announcements as $a): ?>
-            <option value="<?php echo $a['id']; ?>"><?php echo htmlspecialchars($a['title']); ?></option>
-          <?php endforeach; ?>
-        </select>
-      </div>
-      <button type="submit" class="btn btn-danger"><i class="fas fa-trash-alt"></i> Delete Announcement</button>
-    </form>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0"><i class="fas fa-list-ul"></i> Select an Announcement to Delete</h5>
+        </div>
+        <div class="list-group list-group-flush">
+            <?php if (empty($announcements)): ?>
+                <div class="list-group-item">No announcements found.</div>
+            <?php else: ?>
+                <?php foreach ($announcements as $a): ?>
+                    <div class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong class="text-primary"><?= htmlspecialchars($a['title']) ?></strong>
+                            <br>
+                            <small class="text-muted">Posted on: <?= date('M d, Y', strtotime($a['created_at'])) ?></small>
+                        </div>
+                        <button class="btn btn-danger btn-sm delete-btn" data-id="<?= $a['id'] ?>" data-title="<?= htmlspecialchars($a['title']) ?>">
+                            <i class="fas fa-trash-alt"></i> Delete
+                        </button>
+                    </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+    </div>
   </div>
 </div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" role="dialog">
+  <div class="modal-dialog" role="document">
+    <div class="modal-content">
+      <div class="modal-header bg-danger text-white">
+        <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Confirm Deletion</h5>
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+          <span aria-hidden="true">&times;</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to permanently delete the announcement: <strong id="announcement-title-confirm"></strong>?</p>
+        <p class="text-danger">This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer">
+        <form method="POST" action="?page=delete_announcement">
+          <input type="hidden" id="delete-announcement-id" name="announcement_id">
+          <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger">Confirm Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
 <script>
-  // Confetti animation (simple JS)
+  $(document).ready(function() {
+    $('.delete-btn').on('click', function() {
+      const id = $(this).data('id');
+      const title = $(this).data('title');
+      $('#delete-announcement-id').val(id);
+      $('#announcement-title-confirm').text(title);
+      $('#deleteModal').modal('show');
+    });
+  });
+
+  // Advanced Confetti animation
   function confettiRain() {
     const canvas = document.getElementById('confetti-canvas');
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
     let pieces = [];
     for(let i=0;i<150;i++){
-      pieces.push({x:Math.random()*canvas.width,y:Math.random()*-canvas.height,w:8+Math.random()*8,h:8+Math.random()*8,vy:2+Math.random()*4,color:'hsl('+Math.random()*360+',70%,60%)',angle:Math.random()*2*Math.PI});
+      pieces.push({x:Math.random()*canvas.width,y:Math.random()*canvas.height-canvas.height,w:8+Math.random()*8,h:8+Math.random()*8,vy:2+Math.random()*4,color:'hsl('+Math.random()*360+',70%,60%)',angle:Math.random()*2*Math.PI});
     }
     let frame=0;
     function draw(){
+      if (!canvas) return;
       ctx.clearRect(0,0,canvas.width,canvas.height);
       for(let p of pieces){
         ctx.save();
         ctx.translate(p.x,p.y);
         ctx.rotate(p.angle);
         ctx.fillStyle=p.color;
-        ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+        ctx.fillRect(0, 0, p.w, p.h);
         ctx.restore();
         p.y+=p.vy;
         p.angle+=0.02;
-        if(p.y>canvas.height)p.y=-10;
+        if(p.y > canvas.height) {
+            p.y = -20;
+            p.x = Math.random() * canvas.width;
+        }
       }
       frame++;
-      if(frame<90)requestAnimationFrame(draw);
+      if(frame < 180) requestAnimationFrame(draw);
     }
     draw();
+    // Remove the canvas after 3 seconds to prevent it from covering the page
+    setTimeout(() => {
+        if (canvas) canvas.remove();
+    }, 3000);
   }
+  <?php if ($success): ?>confettiRain();<?php endif; ?>
 </script>
 </body>
 </html>

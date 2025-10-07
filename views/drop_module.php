@@ -5,34 +5,53 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 include __DIR__ . '/../config/connection.php';
 
-$student_id = $_SESSION['student_id'] ?? 1; // fallback for demo
+// Ensure student is logged in and get their ID
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'student' || !isset($_SESSION['email'])) {
+    header('Location: ?page=login');
+    exit;
+}
+
+$student_id = null;
+$email = $_SESSION['email'];
+$stmt = $conn->prepare("SELECT student_id FROM students WHERE email = ?");
+$stmt->bind_param("s", $email);
+$stmt->execute();
+$result = $stmt->get_result();
+if ($result && $row = $result->fetch_assoc()) {
+    $student_id = $row['student_id'];
+}
+$stmt->close();
+
+if (!$student_id) {
+    // Display a relevant error message using the new error page
+    $error_title = "Account Error";
+    $error_message = "We couldn't find a student profile linked to your account.<br>Please contact support or try logging in again.";
+    include(ROOT_PATH . '/views/error_display.php');
+    exit;
+}
 
 // Fetch registered modules for this student
-$modules = [];
-// Use correct table name student_module_enrollments
-// Fetch registered modules with enrollment date
-$modules = [];
-$res = $conn->query("SELECT m.module_id, m.module_name, m.module_code, sm.enrollment_date 
+$sql = "SELECT m.module_id, m.module_name, m.module_code, sm.enrollment_date 
                      FROM modules m 
                      INNER JOIN student_module_enrollments sm 
                      ON m.module_id = sm.module_id 
-                     WHERE sm.student_id = $student_id");
-
-if ($res) {
-  while ($row = $res->fetch_assoc()) {
-    $modules[] = $row;
-  }
-}
-
+                     WHERE sm.student_id = ?";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param("i", $student_id);
+$stmt->execute();
+$modules = $stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+$stmt->close();
 
 // Handle drop (multiple modules)
 $success = false;
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['module_ids']) && is_array($_POST['module_ids'])) {
-  foreach ($_POST['module_ids'] as $module_id) {
-    $module_id = intval($module_id);
-    $conn->query("DELETE FROM student_module_enrollments WHERE student_id=$student_id AND module_id=$module_id");
-    $success = true;
-  }
+    $delete_stmt = $conn->prepare("DELETE FROM student_module_enrollments WHERE student_id = ? AND module_id = ?");
+    foreach ($_POST['module_ids'] as $module_id) {
+        $module_id = intval($module_id);
+        $delete_stmt->bind_param("ii", $student_id, $module_id);
+        if ($delete_stmt->execute()) $success = true;
+    }
+    $delete_stmt->close();
 }
 ?>
 <!DOCTYPE html>
@@ -45,14 +64,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['module_ids']) && is_a
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    .confetti-canvas { position: fixed; pointer-events: none; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; }
-    .module-checkbox:checked + span, .module-checkbox-label input:checked + span {
-      color: #28a745;
-      font-weight: bold;
+    .dual-list-box { display: flex; justify-content: space-between; align-items: center; }
+    .list-wrapper { width: 45%; }
+    .list-container {
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        height: 400px;
+        overflow-y: auto;
     }
-    .module-checkbox-label input[type="checkbox"]:checked {
-      accent-color: #28a745;
-      box-shadow: 0 0 0 2px #28a74533;
+    .list-group-item { cursor: pointer; user-select: none; }
+    .list-group-item.active { background-color: #007bff; color: white; border-color: #007bff; }
+    .controls { width: 10%; text-align: center; }
+    .confetti-canvas {
+        position: fixed; pointer-events: none; top: 0; left: 0;
+        width: 100vw; height: 100vh; z-index: 9999;
     }
   </style>
 </head>
@@ -63,34 +88,43 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['module_ids']) && is_a
     <i class="fas fa-home fa-lg"></i>
   </a>
   <div class="content-wrapper p-4">
-    <h2>Drop Module</h2>
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h2><i class="fas fa-minus-circle text-danger"></i> Drop Modules</h2>
+    </div>
     <?php if ($success): ?>
       <div class="alert alert-success">Module dropped successfully!</div>
       <canvas class="confetti-canvas" id="confetti"></canvas>
     <?php endif; ?>
-    <form method="post">
-      <div class="card shadow-sm mb-4">
-        <div class="card-header bg-danger text-white">
-          <h5 class="mb-0"><i class="fas fa-minus-circle"></i> Select Registered Modules to Drop</h5>
-        </div>
-        <div class="card-body">
-          <div class="form-group mb-0">
-            <div class="list-group">
-              <?php if (count($modules) > 0): ?>
-                <?php foreach ($modules as $mod): ?>
-                  <label class="list-group-item d-flex align-items-center module-checkbox-label" style="cursor:pointer;">
-                    <input type="checkbox" name="module_ids[]" value="<?php echo $mod['module_id']; ?>" class="mr-2 module-checkbox">
-                    <span class="ml-2"><?php echo htmlspecialchars($mod['module_name']) . " (" . htmlspecialchars($mod['module_code']) . ") - Enrolled: " . date('M d, Y', strtotime($mod['enrollment_date'])); ?></span>
-                  </label>
-                <?php endforeach; ?>
-              <?php else: ?>
-                <div class="alert alert-secondary mb-0">No registered modules to drop.</div>
-              <?php endif; ?>
+    <form method="post" onsubmit="selectAllInList('selected-modules');">
+        <div class="dual-list-box">
+            <!-- Registered Modules -->
+            <div class="list-wrapper">
+                <h6>Your Registered Modules</h6>
+                <input type="text" id="available-search" class="form-control mb-2" placeholder="Search registered...">
+                <ul id="available-modules" class="list-group list-container">
+                    <?php foreach ($modules as $mod): ?>
+                        <li class="list-group-item" data-id="<?= $mod['module_id'] ?>">
+                            <?= htmlspecialchars($mod['module_name']) ?> <span class="text-muted">(<?= htmlspecialchars($mod['module_code']) ?>)</span>
+                        </li>
+                    <?php endforeach; ?>
+                </ul>
             </div>
-          </div>
+
+            <!-- Controls -->
+            <div class="controls">
+                <button type="button" id="add-module" class="btn btn-secondary mb-2 w-100">&gt;</button>
+                <button type="button" id="remove-module" class="btn btn-secondary w-100">&lt;</button>
+            </div>
+
+            <!-- Selected Modules -->
+            <div class="list-wrapper">
+                <h6>Selected to Drop</h6>
+                <select multiple name="module_ids[]" id="selected-modules" class="list-group list-container form-control" style="padding: 0;">
+                    <!-- Items will be moved here -->
+                </select>
+            </div>
         </div>
-      </div>
-      <button type="submit" class="btn btn-danger btn-block py-2"><i class="fas fa-minus-circle"></i> Drop Selected Modules</button>
+      <button type="submit" class="btn btn-danger btn-lg btn-block mt-4"><i class="fas fa-times-circle"></i> Drop Selected Modules</button>
     </form>
   </div>
 </div>
@@ -98,6 +132,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['module_ids']) && is_a
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/js/adminlte.min.js"></script>
 <script>
+$(document).ready(function() {
+    function moveItems(fromList, toList) {
+        const selectedItems = fromList.find('.active');
+        selectedItems.each(function() {
+            const itemId = $(this).data('id');
+            const itemText = $(this).text();
+            if (toList.is('select')) {
+                // Move to select list
+                $('<option>', { value: itemId, text: itemText }).appendTo(toList);
+            } else {
+                // Move to ul list
+                $(this).removeClass('active').appendTo(toList);
+            }
+        });
+        if (fromList.is('select')) {
+            // Remove from select list
+            fromList.find('option:selected').remove();
+        } else {
+            selectedItems.remove();
+        }
+    }
+
+    // Toggle active class on click for UL
+    $('#available-modules').on('click', '.list-group-item', function(e) {
+        if (!e.ctrlKey) { $(this).siblings().removeClass('active'); }
+        $(this).toggleClass('active');
+    });
+
+    // Move from available to selected
+    $('#add-module').on('click', function() {
+        moveItems($('#available-modules'), $('#selected-modules'));
+    });
+
+    // Move from selected to available
+    $('#remove-module').on('click', function() {
+        const selectedOptions = $('#selected-modules option:selected');
+        selectedOptions.each(function() {
+            const itemId = $(this).val();
+            const itemText = $(this).text();
+            $('<li>', { class: 'list-group-item', 'data-id': itemId, text: itemText }).appendTo('#available-modules');
+        });
+        selectedOptions.remove();
+    });
+
+    // Live search for available modules
+    $('#available-search').on('keyup', function() {
+        const searchTerm = $(this).val().toLowerCase();
+        $('#available-modules li').each(function() {
+            const text = $(this).text().toLowerCase();
+            $(this).toggle(text.includes(searchTerm));
+        });
+    });
+});
+
+// Select all items in the target list before form submission
+function selectAllInList(listId) {
+    $('#' + listId + ' option').prop('selected', true);
+}
+
 // Simple confetti animation
 function confettiEffect() {
   const canvas = document.getElementById('confetti');
