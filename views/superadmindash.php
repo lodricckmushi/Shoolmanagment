@@ -10,6 +10,21 @@ if (!isset($_SESSION['role']) || !in_array($_SESSION['role'], ['superadmin', 'ad
 require_once __DIR__ . '/../config/connection.php';
 $conn = getDBConnection();
 
+// Security check: Re-validate user status on every page load
+$status_stmt = $conn->prepare("SELECT status FROM users WHERE id = ?");
+$status_stmt->bind_param("i", $_SESSION['user_id']);
+$status_stmt->execute();
+$status_result = $status_stmt->get_result();
+if ($status_row = $status_result->fetch_assoc()) {
+    if ($status_row['status'] === 'suspended') {
+        // Destroy session and redirect to login with suspended error
+        session_destroy();
+        header('Location: ?page=login&error=suspended');
+        exit;
+    }
+}
+$status_stmt->close();
+
 // Fetch current superadmin's name for the welcome message
 $current_user_name = 'Admin';
 $user_id = $_SESSION['user_id'] ?? 0;
