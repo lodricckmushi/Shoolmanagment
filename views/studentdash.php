@@ -10,6 +10,20 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'student' || !isset($_SES
     exit;
 }
 
+// Security check: Re-validate user status on every page load
+$status_stmt = $conn->prepare("SELECT status FROM users WHERE email = ?");
+$status_stmt->bind_param("s", $_SESSION['email']);
+$status_stmt->execute();
+$status_result = $status_stmt->get_result();
+if ($status_row = $status_result->fetch_assoc()) {
+    if ($status_row['status'] === 'suspended') {
+        // Destroy session and redirect to login with suspended error
+        session_destroy();
+        header('Location: ?page=login&error=suspended');
+        exit;
+    }
+}
+
 // Get student info based on session email
 $student_id = null;
 $student_name = '';

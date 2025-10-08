@@ -247,25 +247,33 @@ if (isset($_SESSION['role'])) {
 
     /* Modal Error Popup */
     .modal-dialog {
-      max-width: 350px;
+      max-width: 340px; /* Reduced max-width for a smaller popup */
       margin: 0 auto;
     }
     .modal-content {
       border-radius: 1.5rem;
+      border: none;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+      background: #fff;
     }
     .modal-body {
       text-align: center;
-      padding: 2rem;
+      padding: 2rem 1.5rem; /* Reduced padding */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
     .modal-body i {
-      font-size: 2.5rem;
-      color: #ff3c3c;
+      font-size: 2.2rem; /* Reduced icon size */
+      color: #f25c54; /* More modern, softer red */
+      margin-bottom: 1rem;
+      animation: bounceIn 0.6s ease;
     }
     .modal-body #loginErrorMsg {
-      font-size: 1.15rem;
+      font-size: 1.05rem; /* Reduced font size */
       font-weight: 600;
       color: #2a3a4a;
-      margin-top: 1rem;
     }
 
     /* Shake animation for error feedback */
@@ -280,6 +288,19 @@ if (isset($_SESSION['role'])) {
       20%, 80% { transform: translate3d(2px, 0, 0); }
       30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
       40%, 60% { transform: translate3d(4px, 0, 0); }
+    }
+    @keyframes bounceIn {
+      0% { transform: scale(0.5); opacity: 0; }
+      50% { transform: scale(1.1); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    @media (max-width: 600px) {
+      .modal-dialog {
+        max-width: 300px; /* Capped max-width on mobile */
+      }
+      .modal-body { padding: 1.5rem 1rem; }
+      .modal-body i { font-size: 2rem; }
+      .modal-body #loginErrorMsg { font-size: 1rem; }
     }
   </style>
 </head>
@@ -359,6 +380,8 @@ if (isset($_SESSION['role'])) {
             errorMessage = 'Invalid email or password!';
         } else if (error === 'role') {
             errorMessage = 'User role is not configured.';
+        } else if (error === 'suspended') {
+            errorMessage = 'Your account is suspended. Please contact an administrator.';
         } else {
             errorMessage = 'An unknown error occurred.';
         }
@@ -369,8 +392,7 @@ if (isset($_SESSION['role'])) {
 
         setTimeout(function() {
             $('#loginErrorPopup').modal('hide');
-            $('.login-form-box').removeClass('shake');
-        }, 1200);
+        }, 4500); // Set timeout to 4.5 seconds
       }
     });
   </script>
