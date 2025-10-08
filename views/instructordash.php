@@ -86,7 +86,18 @@ if ($instructor_id) {
         border-radius: 0.75rem;
         border: none;
     }
+    .instructor-welcome {
+      font-size:1.1em; 
+      font-weight: 600;
+    }
     .nav-pills .nav-link.active { background-color: #007bff; }
+    @media (max-width: 768px) {
+      .content-header .d-flex {
+        flex-direction: column;
+        align-items: flex-start !important;
+      }
+      .instructor-welcome { margin-top: 0.5rem; font-size: 1em; }
+    }
   </style>
 </head>
 <body class="hold-transition sidebar-mini">
@@ -161,7 +172,7 @@ if ($instructor_id) {
       <div class="container-fluid">
         <div class="d-flex justify-content-between align-items-center">
           <h1 class="m-0">Instructor Dashboard</h1>
-          <span class="badge badge-light p-2" style="font-size:1.1em; font-weight: 600;">
+          <span class="badge badge-light p-2 instructor-welcome">
             <span class="online-indicator"></span>
             Welcome, <?= htmlspecialchars($instructor_name ?: 'Instructor') ?>!
           </span>

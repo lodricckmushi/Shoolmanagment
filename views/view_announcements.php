@@ -92,11 +92,12 @@ $result = $conn->query($sql);
       }
     }
     @media (max-width: 600px) {
-      .announcements-header { padding-left: 0.7rem; font-size: 1.1rem; padding-top: 1.2rem; padding-bottom: 0.7rem; }
+      .announcements-header { padding: 1.5rem 1rem 1rem 1rem; text-align: center; }
+      .announcements-header h2 { font-size: 1.5rem; }
       .home-btn-advanced { width: 40px; height: 40px; font-size: 1.1rem; }
       .announcement-title { font-size: 1.05rem; }
       .announcement-meta { font-size: 0.85rem; }
-      .announcement-content { font-size: 0.98rem; padding-left: 0.5rem !important; }
+      .announcement-content { font-size: 0.98rem; padding-left: 0.75rem !important; }
       .announcement-card { margin-bottom: 1.1rem; }
     }
   </style>

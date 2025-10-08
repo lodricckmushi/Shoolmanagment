@@ -110,16 +110,24 @@ if ($course_id && $student_id) {
       background: #0056b3 !important;
     }
     @media (max-width: 600px) {
+      .main-header {
+        padding-left: 45px; /* Make space for home button */
+      }
       .home-btn-advanced, .btn-home-mobile {
         width: 38px;
         height: 38px;
         font-size: 1.05rem;
         top: 10px;
         left: 10px;
+        position: fixed; /* Ensure it stays fixed */
       }
-    }
-    @media (max-width: 600px) {
-      .student-welcome { right: 0.5rem; top: 0.5rem; font-size: 0.98em; }
+      .student-welcome {
+        position: static; /* Let it flow naturally in the navbar */
+        font-size: 0.9rem;
+        margin-left: auto; /* Push to the right */
+        padding-right: 0.5rem;
+      }
+      .content-header h1 { font-size: 1.5rem; }
       .content-wrapper, .container-fluid { padding: 0.5rem !important; }
       .row.mb-4 { margin-bottom: 0.7rem !important; }
       .card, .small-box { border-radius: 0.7rem !important; }
