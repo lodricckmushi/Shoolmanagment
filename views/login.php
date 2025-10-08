@@ -34,9 +34,10 @@ if (isset($_SESSION['role'])) {
   <style>
     body {
       min-height: 100vh;
-      background: url('../course.jpg') center/cover no-repeat, linear-gradient(120deg, #3a4a5aee 60%, #6b7a8fdd 100%); /* #3f333364; /* Dark but not too black */
+      background: url('/assets/images/course1.jpg') center/cover no-repeat, linear-gradient(135deg, rgba(29, 43, 56, 0.95) 0%, rgba(255, 111, 60, 0.85) 100%);
       font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
       margin: 0;
+      font-family: 'Poppins', 'Segoe UI', 'Roboto', sans-serif;
       padding: 0;
       display: flex;
       flex-direction: column;
@@ -54,10 +55,12 @@ if (isset($_SESSION['role'])) {
     .login-container-box {
       display: flex;
       flex-direction: row;
-      background: #f8fafc;
+      background: rgba(255, 255, 255, 0.1);
       border-radius: 2.5rem;
       box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.13);
-      border: 1.5px solid #e0e7ef;
+      border: 1.5px solid rgba(255, 255, 255, 0.18);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       overflow: hidden;
       max-width: 1000px;
       width: 100%;
@@ -65,26 +68,50 @@ if (isset($_SESSION['role'])) {
       margin-bottom: 2.5vh;
     }
     .login-left {
-      flex: 1 1 0;
+      flex: 1.2 1 0; /* Increase flex-grow to take more space */
       min-width: 220px;
-      max-width: 480px;
-      background: url('../assets/images/course.jpg') center/cover no-repeat, linear-gradient(120deg, #3a4a5aee 60%, #6b7a8fdd 100%);
+      max-width: 550px; /* Increase max-width to allow expansion */
+      background: transparent;
       color: #f8fafc;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
+      justify-content: space-between; /* Positions title at top, footer at bottom */
       position: relative;
-      padding: 2.2rem 1.2rem 1.2rem 1.2rem;
+      text-align: center;
+      padding: 2.5rem 1.2rem 1.5rem 1.2rem;
       overflow: hidden;
     }
+    .login-bg-video {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: translate(-50%, -50%);
+      z-index: 1;
+    }
+    .video-overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background-color: rgba(29, 43, 56, 0.6); z-index: 2;
+    }
     .login-left h1 {
-      font-size: 2.1rem;
-      font-weight: 800;
-      letter-spacing: 2px;
-      margin-bottom: 2.2rem;
-      margin-top: 0.2rem;
+      font-size: 1.8rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      margin: 0;
       text-shadow: 0 2px 12px #2228;
+      position: relative;
+      z-index: 3;
+      color: #f75b22ff; /* Changed color to match button accent */
+    }
+    .login-left-footer {
+        margin-top: auto; /* Pushes footer to the bottom */
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.7);
+        position: relative;
+        z-index: 3;
     }
     .login-divider {
       width: 6px;
@@ -98,24 +125,21 @@ if (isset($_SESSION['role'])) {
     .login-right {
       flex: 1 1 0;
       min-width: 220px;
-      max-width: 480px;
+      max-width: 450px; /* Slightly reduce max-width */
       display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(255,255,255,0.98);
-      border-radius: 0 2.5rem 2.5rem 0;
+      align-items: center;      justify-content: center;
       margin: 0;
       position: relative;
-      box-shadow: 0 0 0 1000px rgba(255,255,255,0.45) inset;
     }
     .login-form-box {
       width: 100%;
       max-width: 340px;
       margin: 0 auto;
       padding: 2.2rem 1.1rem 1.2rem 1.1rem;
-      background: rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.15);
       border-radius: 1.5rem;
-      box-shadow: 0 4px 24px #0002;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
       text-align: center;
     }
     .login-title {
@@ -174,23 +198,45 @@ if (isset($_SESSION['role'])) {
     }
 
     @media (max-width: 600px) {
-      .login-main { flex-direction: column; padding: 0.5rem 0.1rem; }
-      .login-container-box { flex-direction: column; min-height: 0; border-radius: 1.1rem; box-shadow: 0 2px 12px #0001; width: 100vw; max-width: 100vw; margin: 0; }
+      body, .login-main {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        padding: 1rem;
+      }
+      .login-main { 
+        width: 100%;
+        min-height: auto;
+      }
+      .login-container-box { 
+        flex-direction: column; 
+        min-height: 0; 
+        border-radius: 1.5rem; /* Consistent rounding */
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1); 
+        width: 100%;
+        max-width: 400px; /* Set a max-width for a centered card look */
+        margin: 0; 
+        backdrop-filter: none; /* Disable blur on mobile for performance */
+        background: transparent; /* Make container transparent */
+      }
       .login-divider { display: none; }
-      .login-left, .login-right { max-width: 100vw; border-radius: 0; margin: 0; min-width: 0; }
-      .login-left { min-height: 60px; padding: 0.5rem 0.1rem 0.1rem 0.1rem; text-align: center; }
-      .login-left h1 { font-size: 1.2rem; margin-bottom: 1.1rem; }
-      .login-bg-img { max-width: 80px; margin: 0 auto; }
-      .login-right { min-height: 180px; padding: 0.5rem 0.2rem; }
-      .login-form-box { max-width: 98vw; padding: 1.1rem 0.3rem 0.7rem 0.3rem; border-radius: 0.8rem; }
-      .login-title { font-size: 1.1rem; }
-      .login-desc { font-size: 0.98rem; }
-      .form-control { font-size: 0.98rem; border-radius: 1rem; margin-bottom: 0.7rem; }
-      .btn-advanced { font-size: 1rem; padding: 0.7rem 1.2rem; border-radius: 1.2rem; }
-      .modal-dialog { max-width: 95vw; }
-      .modal-body { padding: 1.1rem; }
-      .modal-body i { font-size: 1.5rem; }
-      .modal-body #loginErrorMsg { font-size: 1rem; }
+      .login-left, .login-right { 
+        max-width: 100%; border-radius: 0; margin: 0; min-width: 0; 
+        display: flex; flex-direction: column; justify-content: center;
+      }
+      .login-left { flex: 1; padding: 1.5rem 1rem; text-align: center; border-radius: 1.5rem 1.5rem 0 0; background: rgba(29, 43, 56, 0.7); }
+      .login-left h1 { font-size: 1.7rem; margin-bottom: 0; margin-top: 0; font-weight: 700; }
+      .login-right { 
+        flex: 2; /* Make this panel twice as tall as the left one */
+        padding: 2rem 1.5rem; background: #f8fafc; border-radius: 0 0 1.5rem 1.5rem; 
+      }
+      .login-form-box { max-width: 100%; padding: 0; border-radius: 0; background: transparent; border: none; box-shadow: none; color: #2a3a4a; }
+      .login-title { font-size: 1.8rem; }
+      .login-desc { font-size: 1rem; }
+      .form-control { font-size: 1rem; border-radius: 1.2rem; margin-bottom: 1.2rem; }
+      .btn-advanced { font-size: 1.1rem; padding: 0.8rem 1.5rem; border-radius: 1.5rem; }
     }
     @media (max-width: 400px) {
       .login-form-box { padding: 0.5rem 0.1rem 0.5rem 0.1rem; }
@@ -241,8 +287,12 @@ if (isset($_SESSION['role'])) {
   <div class="login-main">
     <div class="login-container-box">
       <div class="login-left">
+        <video autoplay muted loop class="login-bg-video"><source src="/assets/videos/wellcome.mp4" type="video/mp4">Your browser does not support the video tag.</video>
+        <div class="video-overlay"></div>
         <h1>COURSE MANAGEMENT SYSTEM</h1>
-        <img src="https://via.placeholder.com/480" alt="System Illustration" class="login-bg-img" loading="lazy" onerror="this.style.display='none'">
+        <div class="login-left-footer">
+            &copy; 2025 DIT Institute of Technology
+        </div>
       </div>
       <div class="login-divider"></div>
       <div class="login-right">
@@ -283,8 +333,8 @@ if (isset($_SESSION['role'])) {
   </div>
 
   <!-- Footer -->
-  <div style="width:100vw;text-align:center;padding:1.2rem 0 0.7rem 0;font-size:1.1rem;font-weight:500;letter-spacing:1px;color:#222;opacity:0.92;position:fixed;left:0;bottom:0;background:rgba(255,255,255,0.98);z-index:10;box-shadow:0 -2px 16px #ff6f3c22;">
-    &copy; 2025 <span style="color:#ff6f3c;font-weight:600;">Course Management System</span> | All Rights Reserved. <span style="font-size:1.2em;">&#9733;</span>
+  <div style="width:100vw;text-align:center;padding:0.7rem 0;font-size:0.9rem;font-weight:500;letter-spacing:0.5px;color:#fff;opacity:0.8;position:fixed;left:0;bottom:0;background:rgba(29, 43, 56, 0.7);z-index:10;backdrop-filter: blur(5px);-webkit-backdrop-filter: blur(5px);">
+    &copy; 2025 <span style="color:#ff6f3c;font-weight:600;">Course Management System</span> | All Rights Reserved.
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.0/dist/jquery.min.js"></script>

@@ -78,7 +78,7 @@ $home_page = isset($_SESSION['role']) && $_SESSION['role'] === 'instructor' ? '?
 </head>
 <body>
   <div class="error-container">
-  <img src="assets/images/404.png" alt="Error Illustration" class="error-img" loading="lazy" onerror="this.style.display='none'">
+  <img src="/assets/images/404.png" alt="Error Illustration" class="error-img" loading="lazy" onerror="this.style.display='none'">
     <div class="error-title"><?= htmlspecialchars($error_title) ?></div>
     <div class="error-desc"><?= $error_message /* No htmlspecialchars, allows for <br> */ ?></div>
   <a href="<?= $home_page ?>" class="btn btn-home"><i class="fas fa-home mr-2"></i>Go Home</a>
