@@ -11,15 +11,50 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'instructor' || !isset($_
     exit;
 }
 
+$conn = getDBConnection();
 $instructor_name = '';
-$stmt = $conn->prepare("SELECT name FROM users WHERE email = ? AND role = 'instructor' LIMIT 1");
+$instructor_id = null;
+
+$stmt = $conn->prepare("SELECT id, name FROM users WHERE email = ? AND role = 'instructor' LIMIT 1");
 $stmt->bind_param("s", $_SESSION['email']);
 $stmt->execute();
 $result = $stmt->get_result();
 if ($result && $user = $result->fetch_assoc()) {
     $instructor_name = $user['name'];
+    $instructor_id = $user['id'];
 }
 $stmt->close();
+
+// Fetch assigned courses, their modules, and their students
+$assigned_courses = [];
+if ($instructor_id) {
+    // 1. Get assigned courses
+    $courses_stmt = $conn->prepare("SELECT c.course_id, c.course_name, c.course_code FROM courses c JOIN course_instructor_assignments cia ON c.course_id = cia.course_id WHERE cia.instructor_id = ?");
+    $courses_stmt->bind_param("i", $instructor_id);
+    $courses_stmt->execute();
+    $courses_result = $courses_stmt->get_result();
+
+    while ($course = $courses_result->fetch_assoc()) {
+        $course_id = $course['course_id'];
+        
+        // 2. Get modules for this course
+        $modules_stmt = $conn->prepare("SELECT module_name, module_code FROM modules WHERE course_id = ? ORDER BY module_name");
+        $modules_stmt->bind_param("i", $course_id);
+        $modules_stmt->execute();
+        $course['modules'] = $modules_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $modules_stmt->close();
+
+        // 3. Get students for this course
+        $students_stmt = $conn->prepare("SELECT s.name, s.email, s.semester FROM students s JOIN student_course_enrollments sce ON s.student_id = sce.student_id WHERE sce.course_id = ? ORDER BY s.name");
+        $students_stmt->bind_param("i", $course_id);
+        $students_stmt->execute();
+        $course['students'] = $students_stmt->get_result()->fetch_all(MYSQLI_ASSOC);
+        $students_stmt->close();
+
+        $assigned_courses[] = $course;
+    }
+    $courses_stmt->close();
+}
 ?>
 <html lang="en">
 <head>
@@ -46,6 +81,12 @@ $stmt->close();
         70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
         100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
     }
+    .course-card {
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        border-radius: 0.75rem;
+        border: none;
+    }
+    .nav-pills .nav-link.active { background-color: #007bff; }
   </style>
 </head>
 <body class="hold-transition sidebar-mini">
@@ -126,120 +167,95 @@ $stmt->close();
           </span>
         </div>
         <?php
-        // Connection is already included
-        // Announcements count
-        $res = $conn->query("SELECT COUNT(*) as cnt FROM announcements");
-        $row = $res ? $res->fetch_assoc() : ['cnt'=>0];
-        $announcements_count = $row['cnt'];
-        // Total students count
-        $res = $conn->query("SELECT COUNT(*) as cnt FROM students");
-        $row = $res ? $res->fetch_assoc() : ['cnt'=>0];
-        $students_count = $row['cnt'];
-        // New posts (last 7 days)
-        $res = $conn->query("SELECT COUNT(*) as cnt FROM announcements WHERE created_at >= DATE_SUB(NOW(), INTERVAL 7 DAY)");
-        $row = $res ? $res->fetch_assoc() : ['cnt'=>0];
-        $new_posts = $row['cnt'];
-        // Edits (simulate: count announcements updated in last 7 days, if you have updated_at column, else fallback to new_posts)
-        $edits = $new_posts;
+        // Fetch announcements
+        $ann_sql = "SELECT ia.title, ia.content, ia.created_at, u.name as author_name 
+                    FROM instructor_announcements ia
+                    JOIN users u ON ia.user_id = u.id
+                    ORDER BY ia.created_at DESC LIMIT 10";
+        $ann_res = $conn->query($ann_sql);
+        $announcements = $ann_res ? $ann_res->fetch_all(MYSQLI_ASSOC) : [];
         ?>
-        <!-- Quick Stats Row -->
-        <div class="row mt-3 mb-2">
-          <div class="col-md-3 col-6">
-            <div class="card text-center border-success">
-              <div class="card-body p-2">
-                <i class="fas fa-bullhorn fa-2x text-success mb-1"></i>
-                <div class="h5 mb-0"><?php echo $announcements_count; ?></div>
-                <small class="text-muted">Announcements</small>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-3 col-6">
-            <div class="card text-center border-warning">
-              <div class="card-body p-2">
-                <i class="fas fa-users fa-2x text-warning mb-1"></i>
-                <div class="h5 mb-0"><?php echo $students_count; ?></div>
-                <small class="text-muted">Total Students</small>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-3 col-6">
-            <div class="card text-center border-primary">
-              <div class="card-body p-2">
-                <i class="fas fa-plus fa-2x text-primary mb-1"></i>
-                <div class="h5 mb-0"><?php echo $new_posts; ?></div>
-                <small class="text-muted">New Posts</small>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-3 col-6">
-            <div class="card text-center border-danger">
-              <div class="card-body p-2">
-                <i class="fas fa-edit fa-2x text-danger mb-1"></i>
-                <div class="h5 mb-0"><?php echo $edits; ?></div>
-                <small class="text-muted">Edits</small>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
 
     <div class="content">
       <div class="container-fluid">
-        <div class="row">
-
-          <div class="col-lg-3 col-6">
-            <div class="small-box bg-success">
-              <div class="inner">
-                <h4>Post Announcement</h4>
-                <p>Create new announcement</p>
-              </div>
-              <div class="icon">
-                <i class="fas fa-plus"></i>
-              </div>
-              <a href="?page=post_announcement" class="small-box-footer">Go <i class="fas fa-arrow-circle-right"></i></a>
+        <?php if (empty($assigned_courses)): ?>
+            <div class="alert alert-warning text-center">You are not currently assigned to any courses.</div>
+        <?php else: ?>
+            <div class="row">
+                <div class="col-12">
+                    <div class="card course-card card-primary card-tabs">
+                        <div class="card-header p-0 pt-1">
+                            <ul class="nav nav-tabs" id="course-tabs" role="tablist">
+                                <?php foreach ($assigned_courses as $index => $course): ?>
+                                    <li class="nav-item"><a class="nav-link <?= $index == 0 ? 'active' : '' ?>" id="tab-<?= $course['course_id'] ?>-tab" data-toggle="pill" href="#tab-<?= $course['course_id'] ?>" role="tab"><?= htmlspecialchars($course['course_name']) ?></a></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        </div>
+                        <div class="card-body">
+                            <div class="tab-content" id="course-tabs-content">
+                                <?php foreach ($assigned_courses as $index => $course): ?>
+                                    <div class="tab-pane fade <?= $index == 0 ? 'show active' : '' ?>" id="tab-<?= $course['course_id'] ?>" role="tabpanel">
+                                        <h4>Course Code: <span class="text-muted"><?= htmlspecialchars($course['course_code']) ?></span></h4>
+                                        <hr>
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <h5><i class="fas fa-layer-group text-info"></i> Modules</h5>
+                                                <ul class="list-group">
+                                                    <?php foreach ($course['modules'] as $module): ?>
+                                                        <li class="list-group-item"><?= htmlspecialchars($module['module_name']) ?> (<?= htmlspecialchars($module['module_code']) ?>)</li>
+                                                    <?php endforeach; ?>
+                                                </ul>
+                                            </div>
+                                            <div class="col-md-8">
+                                                <h5><i class="fas fa-user-graduate text-warning"></i> Enrolled Students (<?= count($course['students']) ?>)</h5>
+                                                <div class="table-responsive" style="max-height: 400px;">
+                                                    <table class="table table-sm table-striped">
+                                                        <thead><tr><th>Name</th><th>Email</th><th>Semester</th></tr></thead>
+                                                        <tbody>
+                                                            <?php foreach ($course['students'] as $student): ?>
+                                                                <tr>
+                                                                    <td><?= htmlspecialchars($student['name']) ?></td>
+                                                                    <td><?= htmlspecialchars($student['email']) ?></td>
+                                                                    <td><?= htmlspecialchars($student['semester'] ?? 'N/A') ?></td>
+                                                                </tr>
+                                                            <?php endforeach; ?>
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-          </div>
+        <?php endif; ?>
 
-          <div class="col-lg-3 col-6">
-            <div class="small-box bg-warning">
-              <div class="inner">
-                <h4>Edit Announcement</h4>
-                <p>Modify existing announcements</p>
-              </div>
-              <div class="icon">
-                <i class="fas fa-edit"></i>
-              </div>
-              <a href="?page=edit_announcement" class="small-box-footer">Go <i class="fas fa-arrow-circle-right"></i></a>
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card card-outline card-primary">
+                    <div class="card-header"><h3 class="card-title"><i class="fas fa-bullhorn"></i> Recent Staff Announcements</h3></div>
+                    <div class="card-body">
+                        <?php if (empty($announcements)): ?>
+                            <p class="text-muted">No announcements have been posted yet.</p>
+                        <?php else: ?>
+                            <?php foreach($announcements as $ann): ?>
+                                <div class="post mb-4 border-bottom pb-3">
+                                    <div class="user-block">
+                                        <span class="username ml-0"><a href="#"><?= htmlspecialchars($ann['title']) ?></a></span>
+                                        <span class="description ml-0">Posted on <?= date('M d, Y', strtotime($ann['created_at'])) ?> by <strong><?= htmlspecialchars($ann['author_name'] ?? 'Admin') ?></strong></span>
+                                    </div>
+                                    <div><?= html_entity_decode($ann['content']) ?></div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
+                    </div>
+                </div>
             </div>
-          </div>
-
-          <div class="col-lg-3 col-6">
-            <div class="small-box bg-danger">
-              <div class="inner">
-                <h4>Delete Announcement</h4>
-                <p>Remove announcements</p>
-              </div>
-              <div class="icon">
-                <i class="fas fa-trash-alt"></i>
-              </div>
-              <a href="?page=delete_announcement" class="small-box-footer">Go <i class="fas fa-arrow-circle-right"></i></a>
-            </div>
-          </div>
-
-          <div class="col-lg-3 col-6">
-            <div class="small-box bg-info">
-              <div class="inner">
-                <h4>Total Students</h4>
-                <p>View all students under you</p>
-              </div>
-              <div class="icon">
-                <i class="fas fa-users"></i>
-              </div>
-              <a href="?page=total_students" class="small-box-footer">Go <i class="fas fa-arrow-circle-right"></i></a>
-            </div>
-          </div>
-
         </div>
       </div>
     </div>

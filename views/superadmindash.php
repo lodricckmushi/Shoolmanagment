@@ -323,8 +323,8 @@ $dashboard_title = ($_SESSION['role'] === 'superadmin') ? 'Super Admin Dashboard
                             <!-- Announcements Tab -->
                             <div class="tab-pane fade" id="tab-announcements" role="tabpanel">
                                 <div class="row">
-                                    <div class="col-12"><h5 class="tab-section-header">Recent Communications</h5></div>
-                                    <?php if ($_SESSION['role'] === 'superadmin'): ?>
+                                    <div class="col-12"><h5 class="tab-section-header">Staff Communications</h5></div>
+                                    <?php if (in_array($_SESSION['role'], ['superadmin', 'admin'])): ?>
                                     <div class="col-md-6">
                                         <div class="card card-outline card-info">
                                             <div class="card-header"><h3 class="card-title"><i class="fas fa-user-shield mr-1"></i> Admin Announcements</h3></div>
@@ -340,7 +340,9 @@ $dashboard_title = ($_SESSION['role'] === 'superadmin') ? 'Super Admin Dashboard
                                                     <?php endforeach; ?>
                                                 <?php endif; ?>
                                             </div>
-                                            <div class="card-footer text-center"><a href="?page=post_admin_announcement" class="btn btn-info"><i class="fas fa-plus-circle"></i> Post to Admins</a></div>
+                                            <?php if ($_SESSION['role'] === 'superadmin'): ?>
+                                                <div class="card-footer text-center"><a href="?page=post_admin_announcement" class="btn btn-info"><i class="fas fa-plus-circle"></i> Post to Admins</a></div>
+                                            <?php endif; ?>
                                         </div>
                                     </div>
                                     <?php endif; ?>

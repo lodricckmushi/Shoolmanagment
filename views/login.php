@@ -34,7 +34,7 @@ if (isset($_SESSION['role'])) {
   <style>
     body {
       min-height: 100vh;
-      background: url('../course.jpg') center/cover no-repeat, linear-gradient(120deg, #3a4a5aee 60%, #6b7a8fdd 100%); /* #3f333364; /* Dark but not too black */
+      background: url('/assets/images/course.jpg') center/cover no-repeat, linear-gradient(135deg, rgba(29, 43, 56, 0.95) 0%, rgba(255, 111, 60, 0.85) 100%);
       font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
       margin: 0;
       padding: 0;
@@ -54,10 +54,12 @@ if (isset($_SESSION['role'])) {
     .login-container-box {
       display: flex;
       flex-direction: row;
-      background: #f8fafc;
+      background: rgba(255, 255, 255, 0.1);
       border-radius: 2.5rem;
       box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.13);
-      border: 1.5px solid #e0e7ef;
+      border: 1.5px solid rgba(255, 255, 255, 0.18);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       overflow: hidden;
       max-width: 1000px;
       width: 100%;
@@ -68,23 +70,52 @@ if (isset($_SESSION['role'])) {
       flex: 1 1 0;
       min-width: 220px;
       max-width: 480px;
-      background: url('../assets/images/course.jpg') center/cover no-repeat, linear-gradient(120deg, #3a4a5aee 60%, #6b7a8fdd 100%);
+      background: transparent;
       color: #f8fafc;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
+      justify-content: center;
+      justify-content: flex-start; /* Changed from center to flex-start */
       position: relative;
+      text-align: center;
       padding: 2.2rem 1.2rem 1.2rem 1.2rem;
       overflow: hidden;
+    }
+    .login-bg-video {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transform: translate(-50%, -50%);
+      z-index: 1;
+    }
+    .video-overlay {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background-color: rgba(29, 43, 56, 0.6); z-index: 2;
     }
     .login-left h1 {
       font-size: 2.1rem;
       font-weight: 800;
+      font-weight: 700;
       letter-spacing: 2px;
       margin-bottom: 2.2rem;
       margin-top: 0.2rem;
+      margin-top: 2rem; /* Added margin top for spacing */
       text-shadow: 0 2px 12px #2228;
+      position: relative;
+      z-index: 3;
+      color: #f75b22ff; /* Changed color to match button accent */
+    }
+    .login-left-footer {
+        margin-top: auto; /* Pushes footer to the bottom */
+        padding: 1rem;
+        font-size: 0.9rem;
+        color: rgba(255, 255, 255, 0.7);
+        position: relative;
+        z-index: 3;
     }
     .login-divider {
       width: 6px;
@@ -100,22 +131,19 @@ if (isset($_SESSION['role'])) {
       min-width: 220px;
       max-width: 480px;
       display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(255,255,255,0.98);
-      border-radius: 0 2.5rem 2.5rem 0;
+      align-items: center;      justify-content: center;
       margin: 0;
       position: relative;
-      box-shadow: 0 0 0 1000px rgba(255,255,255,0.45) inset;
     }
     .login-form-box {
       width: 100%;
       max-width: 340px;
       margin: 0 auto;
       padding: 2.2rem 1.1rem 1.2rem 1.1rem;
-      background: rgba(255,255,255,0.07);
+      background: rgba(255,255,255,0.15);
       border-radius: 1.5rem;
-      box-shadow: 0 4px 24px #0002;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
       text-align: center;
     }
     .login-title {
@@ -241,8 +269,12 @@ if (isset($_SESSION['role'])) {
   <div class="login-main">
     <div class="login-container-box">
       <div class="login-left">
+        <video autoplay muted loop class="login-bg-video"><source src="/assets/videos/wellcome.mp4" type="video/mp4">Your browser does not support the video tag.</video>
+        <div class="video-overlay"></div>
         <h1>COURSE MANAGEMENT SYSTEM</h1>
-        <img src="https://via.placeholder.com/480" alt="System Illustration" class="login-bg-img" loading="lazy" onerror="this.style.display='none'">
+        <div class="login-left-footer">
+            &copy; 2025 Course Management System
+        </div>
       </div>
       <div class="login-divider"></div>
       <div class="login-right">
@@ -283,8 +315,8 @@ if (isset($_SESSION['role'])) {
   </div>
 
   <!-- Footer -->
-  <div style="width:100vw;text-align:center;padding:1.2rem 0 0.7rem 0;font-size:1.1rem;font-weight:500;letter-spacing:1px;color:#222;opacity:0.92;position:fixed;left:0;bottom:0;background:rgba(255,255,255,0.98);z-index:10;box-shadow:0 -2px 16px #ff6f3c22;">
-    &copy; 2025 <span style="color:#ff6f3c;font-weight:600;">Course Management System</span> | All Rights Reserved. <span style="font-size:1.2em;">&#9733;</span>
+  <div style="width:100vw;text-align:center;padding:0.7rem 0;font-size:0.9rem;font-weight:500;letter-spacing:0.5px;color:#fff;opacity:0.8;position:fixed;left:0;bottom:0;background:rgba(29, 43, 56, 0.7);z-index:10;backdrop-filter: blur(5px);-webkit-backdrop-filter: blur(5px);">
+    &copy; 2025 <span style="color:#ff6f3c;font-weight:600;">Course Management System</span> | All Rights Reserved.
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.0/dist/jquery.min.js"></script>
